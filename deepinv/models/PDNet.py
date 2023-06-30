@@ -3,7 +3,7 @@ import torch.nn as nn
 
 
 class PrimalBlock(nn.Module):
-    def __init__(self, in_channels=6, out_channels=3, depth=3, bias=True, nf=5):
+    def __init__(self, in_channels=2, out_channels=1, depth=3, bias=True, nf=5):
         """
         TODO: add doc
         """
@@ -40,7 +40,7 @@ class PrimalBlock(nn.Module):
 
 
 class DualBlock(nn.Module):
-    def __init__(self, in_channels=7, out_channels=3, depth=3, bias=True, nf=5):
+    def __init__(self, in_channels=3, out_channels=1, depth=3, bias=True, nf=5):
         """
         TODO: add doc
         """
