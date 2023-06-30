@@ -43,11 +43,11 @@ device = dinv.utils.get_freer_gpu() if torch.cuda.is_available() else "cpu"
 # %%
 # Load base image datasets and degradation operators.
 # ----------------------------------------------------------------------------------------
-# In this example, we use the CBSD500 dataset for training and the Set3C dataset for testing.
+# In this example, we use the similated ellipses phantom dataset from the ODL library.
 
-img_size = 64 if torch.cuda.is_available() else 32
-n_channels = 3  # 3 for color images, 1 for gray-scale images
-operation = "super-resolution"
+img_size = 128 if torch.cuda.is_available() else 32
+n_channels = 1  
+operation = "tomography"
 
 # %%
 # Generate a dataset of low resolution images and load it.
@@ -56,47 +56,37 @@ operation = "super-resolution"
 
 # For simplicity, we use a small dataset for training.
 # To be replaced for optimal results. For example, you can use the larger "drunet" dataset.
-train_dataset_name = "CBSD500"
-test_dataset_name = "set3c"
-# Specify the  train and test transforms to be applied to the input images.
-test_transform = transforms.Compose(
-    [transforms.CenterCrop(img_size), transforms.ToTensor()]
-)
+train_dataset_name = "ellipses"
 train_transform = transforms.Compose(
-    [transforms.RandomCrop(img_size), transforms.ToTensor()]
+    [transforms.Resize(img_size), transforms.Grayscale(), transforms.ToTensor()]
 )
-# Define the base train and test datasets of clean images.
 train_base_dataset = load_dataset(
     train_dataset_name, ORIGINAL_DATA_DIR, transform=train_transform
 )
-test_base_dataset = load_dataset(
-    test_dataset_name, ORIGINAL_DATA_DIR, transform=test_transform
-)
+
 
 # Use parallel dataloader if using a GPU to fasten training, otherwise, as all computes are on CPU, use synchronous
 # dataloading.
 num_workers = 4 if torch.cuda.is_available() else 0
 
 # Degradation parameters
-factor = 2
 noise_level_img = 0.03
 
 # Generate the gaussian blur downsampling operator.
-physics = dinv.physics.Downsampling(
-    img_size=(n_channels, img_size, img_size),
-    factor=factor,
-    mode="gauss",
+physics = dinv.physics.Tomography(
+    img_width=img_size,
+    angles=100,
+    circle=False,
     device=device,
     noise_model=dinv.physics.GaussianNoise(sigma=noise_level_img),
 )
-my_dataset_name = "demo_unfolded_sr"
+my_dataset_name = "demo_ellipses"
 n_images_max = (
-    1000 if torch.cuda.is_available() else 10
+    5000 if torch.cuda.is_available() else 10
 )  # maximal number of images used for training
 measurement_dir = DATA_DIR / train_dataset_name / operation
 generated_datasets_path = dinv.datasets.generate_dataset(
     train_dataset=train_base_dataset,
-    test_dataset=test_base_dataset,
     physics=physics,
     device=device,
     save_dir=measurement_dir,
@@ -106,7 +96,7 @@ generated_datasets_path = dinv.datasets.generate_dataset(
 )
 
 train_dataset = dinv.datasets.HDF5Dataset(path=generated_datasets_path, train=True)
-test_dataset = dinv.datasets.HDF5Dataset(path=generated_datasets_path, train=False)
+test_dataset = dinv.datasets.HDF5Dataset(path=generated_datasets_path, train=True)
 
 # %%
 # Define a custom iterator for the PDNet learned primal-dual algorithm.
@@ -194,16 +184,16 @@ class PDNetDataFid(DataFidelity):
 
 
 # Unrolled optimization algorithm parameters
-max_iter = 5  # number of unfolded layers
+max_iter = 10 if torch.cuda.is_available() else 5
 
 # Set up the data fidelity term. Each layer has its own data fidelity module.
 data_fidelity = [
-    PDNetDataFid(model=DualBlock(in_channels=9).to(device)) for i in range(max_iter)
+    PDNetDataFid(model=DualBlock().to(device)) for i in range(max_iter)
 ]
 
 # Set up the trainable prior. Each layer has its own prior module.
 prior = [
-    PDNetPrior(model=PrimalBlock(in_channels=6).to(device)) for i in range(max_iter)
+    PDNetPrior(model=PrimalBlock().to(device)) for i in range(max_iter)
 ]
 
 
@@ -237,7 +227,7 @@ model = unfolded_builder(
 
 # training parameters
 epochs = 10 if torch.cuda.is_available() else 2
-learning_rate = 5e-4
+learning_rate = 1e-3
 train_batch_size = 32 if torch.cuda.is_available() else 1
 test_batch_size = 3
 
