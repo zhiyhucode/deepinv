@@ -6,7 +6,10 @@ from .haze import Haze
 from .forward import Denoising, Physics, LinearPhysics, DecomposablePhysics
 from .noise import GaussianNoise, PoissonNoise, PoissonGaussianNoise, UniformNoise
 from .mri import MRI
-from .mri_nc import MRI_NC
+try:
+    from .mri_nc import MRI_NC
+except:
+    print('MRI_NC not available')
 from .tomography import Tomography
 from .lidar import SinglePhotonLidar
 from .singlepixel import SinglePixelCamera

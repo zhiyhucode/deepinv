@@ -55,6 +55,17 @@ def test_generate_dataset(tmp_path, imsize, device):
     x, y = dataset[0]
     assert x.shape == imsize
 
+    # Check that train_dataset = None is handled correctly for dataset generation
+    dinv.datasets.generate_dataset(
+        None,
+        physics,
+        tmp_path,
+        test_dataset=test_dataset,
+        device=device,
+        dataset_filename="dinv_dataset",
+        train_datapoints=max_N,
+    )
+
 
 @pytest.fixture
 def dummy_dataset(imsize, device):
