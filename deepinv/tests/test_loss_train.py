@@ -62,7 +62,7 @@ def test_generate_dataset(tmp_path, imsize, device):
         tmp_path,
         test_dataset=test_dataset,
         device=device,
-        dataset_filename="dinv_dataset",
+        dataset_filename="dinv_dataset_None",
         train_datapoints=max_N,
     )
 
