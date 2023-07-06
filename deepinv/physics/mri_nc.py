@@ -63,7 +63,7 @@ class MRI_NC(LinearPhysics):
     def A(self, x):
         # if x.dtype != torch.complex64:
         #     x = x.to(torch.complex64)
-        x_np = np.complex64(x.cpu().numpy())
+        x_np = np.complex128(x.cpu().numpy())
         y_np = self._operator.op(x_np)
         return torch.from_numpy(y_np).type(x.type())
 
