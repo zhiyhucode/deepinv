@@ -32,19 +32,23 @@ class HDF5Dataset(data.Dataset):
                 self.x = hd5["x_test"][()]
                 self.y = hd5["y_test"][()]
 
-        # hd5.close()
+        if 'complex' in str(self.y.dtype):
+            self.torch_data_type = torch.complex128
+        else:
+            self.torch_data_type = torch.float
 
     def __getitem__(self, index):
-        y = torch.from_numpy(self.y[index]).type(torch.float)
+        y = torch.from_numpy(self.y[index]).type(self.torch_data_type)
 
         x = y
         if not self.unsupervised:
-            x = torch.from_numpy(self.x[index]).type(torch.float)
+            x = torch.from_numpy(self.x[index]).type(self.torch_data_type)
 
         return x, y
 
     def __len__(self):
         return len(self.y)
+
 
 
 def generate_dataset(
