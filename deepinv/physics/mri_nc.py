@@ -49,6 +49,7 @@ class MRI_NC(LinearPhysics):
             raise RuntimeError("mri-nufft is not installed.")
 
         self.backend = backend
+        self.shape = shape
 
         opKlass = get_operator(backend)
         self._operator = opKlass(
