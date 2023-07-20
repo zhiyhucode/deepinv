@@ -55,6 +55,9 @@ def plot(
     max_imgs=4,
     rescale_mode="min_max",
     show=True,
+    figsize=None,
+    dpi=100,
+    fontsize_titles=8
 ):
     r"""
     Plots a list of images.
@@ -115,14 +118,17 @@ def plot(
             col_imgs.append(pimg.detach().permute(1, 2, 0).squeeze().cpu().numpy())
         imgs.append(col_imgs)
 
-    plt.figure(figsize=(len(imgs), len(imgs[0]) * 1.3))
+    if figsize is None:
+        figsize = (len(imgs), len(imgs[0]) * 1.3)
+
+    plt.figure(figsize=figsize)
 
     for i, row_imgs in enumerate(imgs):
         for r, img in enumerate(row_imgs):
             plt.subplot(len(imgs[0]), len(imgs), r * len(imgs) + i + 1)
             plt.imshow(img, cmap="gray")
             if titles and r == 0:
-                plt.title(titles[i], size=8)
+                plt.title(titles[i], size=fontsize_titles)
             plt.axis("off")
     if tight:
         plt.subplots_adjust(hspace=0.01, wspace=0.05)
@@ -131,7 +137,7 @@ def plot(
         for i, row_imgs in enumerate(imgs):
             for r, img in enumerate(row_imgs):
                 plt.imsave(
-                    save_dir / (titles[i] + "_" + str(r) + ".png"), img, cmap="gray"
+                    save_dir / (titles[i] + "_" + str(r) + ".png"), img, cmap="gray", dpi=dpi
                 )
     if show:
         plt.show()
