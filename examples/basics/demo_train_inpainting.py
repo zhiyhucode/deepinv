@@ -41,8 +41,8 @@ device = dinv.utils.get_freer_gpu() if torch.cuda.is_available() else "cpu"
 
 operation = "inpainting"
 train_dataset_name = "CBSD68"
-test_dataset_name = "set3c"
-img_size = 128 if torch.cuda.is_available() else 32
+test_dataset_name = "CBSD68"
+img_size = 128 if torch.cuda.is_available() else 128
 
 test_transform = transforms.Compose(
     [transforms.CenterCrop(img_size), transforms.ToTensor()]
@@ -96,8 +96,8 @@ train_dataset = dinv.datasets.HDF5Dataset(path=deepinv_datasets_path, train=True
 test_dataset = dinv.datasets.HDF5Dataset(path=deepinv_datasets_path, train=False)
 
 
-train_batch_size = 32 if torch.cuda.is_available() else 1
-test_batch_size = 32 if torch.cuda.is_available() else 1
+train_batch_size = 32 if torch.cuda.is_available() else 16
+test_batch_size = 1 if torch.cuda.is_available() else 1
 
 train_dataloader = DataLoader(
     train_dataset, batch_size=train_batch_size, num_workers=num_workers, shuffle=True
@@ -145,7 +145,7 @@ epochs = 4  # choose training epochs
 learning_rate = 5e-4
 
 verbose = True  # print training information
-wandb_vis = False  # plot curves and images in Weight&Bias
+wandb_vis = True  # plot curves and images in Weight&Bias
 
 # choose training losses
 losses = dinv.loss.SupLoss(metric=dinv.metric.mse())

@@ -136,7 +136,7 @@ class DRUNet(nn.Module):
         if pretrained is not None:
             if pretrained == "download":
                 name = "drunet_color.pth"
-                url = online_weights_path() + name
+                url = 'https://huggingface.co/deepinv/DRUNet/resolve/main/' + name
                 ckpt_drunet = torch.hub.load_state_dict_from_url(
                     url, map_location=lambda storage, loc: storage, file_name=name
                 )

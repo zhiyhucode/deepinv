@@ -135,6 +135,16 @@ def train(
                         x = x.to(device)
 
                 y = y.to(device)
+                
+                for k in range(len(y)):
+                    im_save(
+                        Path('images') / ('y' + "_" + str(k) + ".png"),
+                        torch2cpu(y[k:k+1]),
+                    )
+                    im_save(
+                        Path('images') / ('x' + "_" + str(k) + ".png"),
+                        torch2cpu(x[k:k+1]),
+                    )
 
                 optimizer.zero_grad()
 
@@ -181,6 +191,10 @@ def train(
         loss_history.append(loss_total.detach().cpu().numpy())
 
         if wandb_vis:
+            imgs = wandb_imgs(y, n_plot=16, captions="Input")
+            wandb.log({f"Images y batch_{i} (G={g}) ": imgs}, step=epoch)
+            imgs = wandb_imgs(x, n_plot=16, captions="GT")
+            wandb.log({f"Images x batch_{i} (G={g}) ": imgs}, step=epoch)
             wandb.log({"training loss": loss_total}, step=epoch)
 
         if (epoch + 1) % log_interval == 0:
@@ -294,8 +308,8 @@ def test(
 
             if plot_images or save_images or wandb_vis:
                 if g < show_operators:
-                    imgs = [x_init, x1, x]
-                    name_imgs = ["Linear", "Recons.", "GT"]
+                    imgs = [y, x_init, x1, x]
+                    name_imgs = ["Input", "Linear", "Recons.", "GT"]
 
                     if save_images:
                         for img, name_im in zip(imgs, name_imgs):
