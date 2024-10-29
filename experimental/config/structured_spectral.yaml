@@ -14,10 +14,10 @@ signal:
 model:
   n_layers: 2
   diagonal:
-    mode: ['uniform_phase', 'marchenko'] # 'uniform_phase', 'gaussian', 'laplace', 'marchenko', 'student-t', 'uniform', 'triangular'
+    mode: ['uniform_phase', 'triangular'] # 'uniform_phase', 'gaussian', 'laplace', 'marchenko', 'student-t', 'uniform', 'triangular'
     config:
       degree_of_freedom: 30
-      complex: True
+      complex: False
       unit_mag: True
   transform: "fft"
   shared_weights: False
