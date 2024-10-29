@@ -119,6 +119,13 @@ def generate_diagonal(
     elif mode == "marchenko":
         diag = torch.from_numpy(MarchenkoPastur(config.m,config.n).sample(shape)).to(dtype)
         diag = torch.sqrt(diag)
+    elif mode == "marchenko_phase":
+        mag = torch.from_numpy(MarchenkoPastur(config.m,config.n).sample(shape)).to(dtype)
+        mag = torch.sqrt(mag) 
+        phase = torch.rand(shape)
+        phase = 2 * np.pi * phase
+        phase = torch.exp(1j * phase)
+        diag = mag * phase
     elif mode == "uniform":
         #! variance = 1/2a for real numbers
         real = torch.sqrt(torch.tensor(6)) * (torch.rand(shape, dtype=torch.float32) - 0.5)
