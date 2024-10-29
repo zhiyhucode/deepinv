@@ -116,8 +116,9 @@ def generate_diagonal(
         student_t_dist = torch.distributions.studentT.StudentT(config.degree_of_freedom,0,1)
         scale = torch.sqrt((torch.tensor(config.degree_of_freedom)-2)/torch.tensor(config.degree_of_freedom)/2)
         diag = (scale*(student_t_dist.sample(shape) + 1j*student_t_dist.sample(shape))).to(device)
-    elif mode == "marchenko-pastur":
+    elif mode == "marchenko":
         diag = torch.from_numpy(MarchenkoPastur(config.m,config.n).sample(shape)).to(dtype)
+        diag = torch.sqrt(diag)
     elif mode == "uniform":
         #! variance = 1/2a for real numbers
         real = torch.sqrt(torch.tensor(6)) * (torch.rand(shape, dtype=torch.float32) - 0.5)
@@ -317,7 +318,7 @@ class StructuredRandomPhaseRetrieval(PhaseRetrieval):
         output_shape:tuple,
         n_layers:int,
         transform="fft",
-        diagonal_mode="uniform_phase",
+        diagonal_mode="uniform_phase", # right first
         distri_config:DotMap=None,
         shared_weights=False,
         dtype=torch.complex64,
@@ -382,18 +383,21 @@ class StructuredRandomPhaseRetrieval(PhaseRetrieval):
 
         self.diagonals = []
 
+        if isinstance(diagonal_mode,str):
+            diagonal_mode = [diagonal_mode] * math.floor(self.n_layers)
+        
         if not shared_weights:
-            for _ in range(math.floor(self.n_layers)):
+            for i in range(math.floor(self.n_layers)):
                 if self.mode == "oversampling":
-                    diagonal = generate_diagonal(self.output_shape, mode=diagonal_mode, dtype=self.dtype, device=self.device, config=self.distri_config)
+                    diagonal = generate_diagonal(self.output_shape, mode=diagonal_mode[i], dtype=self.dtype, device=self.device, config=self.distri_config)
                 else:
-                    diagonal = generate_diagonal(self.input_shape, mode=diagonal_mode, dtype=self.dtype, device=self.device, config=self.distri_config)
+                    diagonal = generate_diagonal(self.input_shape, mode=diagonal_mode[i], dtype=self.dtype, device=self.device, config=self.distri_config)
                 self.diagonals.append(diagonal)
         else:
             if self.mode == "oversampling":
-                diagonal = generate_diagonal(self.output_shape, mode=diagonal_mode, dtype=self.dtype, device=self.device, config=self.distri_config)
+                diagonal = generate_diagonal(self.output_shape, mode=diagonal_mode[i], dtype=self.dtype, device=self.device, config=self.distri_config)
             else:
-                diagonal = generate_diagonal(self.input_shape, mode=diagonal_mode, dtype=self.dtype, device=self.device, config=self.distri_config)
+                diagonal = generate_diagonal(self.input_shape, mode=diagonal_mode[i], dtype=self.dtype, device=self.device, config=self.distri_config)
             self.diagonals = self.diagonals + [diagonal] * math.floor(self.n_layers)
 
         if transform == "fft":
