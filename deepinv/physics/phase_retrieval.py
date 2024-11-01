@@ -49,7 +49,8 @@ class MarchenkoPastur:
             self.sigma = np.array(sigma)
         else:
             # automatically set sigma to make E[|x|^2] = 1
-            self.sigma = (1+self.gamma)**(-0.25)
+            # self.sigma = (1+self.gamma)**(-0.25)
+            self.sigma = 1
         self.lamb = m / n
         self.min_supp = np.array(self.sigma**2*(1-np.sqrt(self.gamma))**2)
         self.max_supp = np.array(self.sigma**2*(1+np.sqrt(self.gamma))**2)
@@ -325,7 +326,7 @@ class StructuredRandomPhaseRetrieval(PhaseRetrieval):
         output_shape:tuple,
         n_layers:int,
         transform="fft",
-        diagonal_mode="uniform_phase", # right first
+        diagonal_mode="uniform_phase", # lower index is closer to the input
         distri_config:DotMap=None,
         shared_weights=False,
         dtype=torch.complex64,
