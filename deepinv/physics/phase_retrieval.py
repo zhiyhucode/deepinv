@@ -1,3 +1,4 @@
+from abc import ABC, abstractmethod
 from functools import partial
 import math
 
@@ -39,6 +40,29 @@ def triangular_distribution(a, size):
     
     return samples
 
+class Distribution(ABC):
+    def __init__(self):
+        self.max_pdf = None
+
+    @abstractmethod
+    def pdf(self, x):
+        pass
+
+    def sample(self,samples_shape):
+        """using acceptance-rejection sampling"""
+        # compute the maximum value of the pdf if not yet computed
+        if self.max_pdf is None:
+            self.max_pdf = np.max(self.pdf(np.linspace(self.min_supp+1e-8,self.max_supp-1e-8,10000)))
+        
+        samples = []
+        while len(samples) < np.prod(samples_shape):
+            x = np.random.uniform(self.min_supp, self.max_supp, size=1)
+            y = np.random.uniform(0, self.max_pdf, size=1)
+            if y < self.pdf(x):
+                samples.append(x)
+        return np.array(samples).reshape(samples_shape)
+
+
 class MarchenkoPastur:
     def __init__(self,m,n,sigma=None):
         self.m = np.array(m)
@@ -54,31 +78,28 @@ class MarchenkoPastur:
         self.lamb = m / n
         self.min_supp = np.array(self.sigma**2*(1-np.sqrt(self.gamma))**2)
         self.max_supp = np.array(self.sigma**2*(1+np.sqrt(self.gamma))**2)
-        self.max_pdf = None
+        super().__init__()
     
     def pdf(self,x):
         assert (x >= self.min_supp).all() and (x <= self.max_supp).all(), "x is out of the support of the distribution"
         return np.sqrt((self.max_supp - x) * (x - self.min_supp)) / (2 * np.pi * self.sigma**2 * self.gamma * x)
-    
-    def sample(self,samples_shape):
-        """using acceptance-rejection sampling"""
-        # compute the maximum value of the pdf if not yet computed
-        if self.max_pdf is None:
-            self.max_pdf = np.max(self.pdf(np.linspace(self.min_supp,self.max_supp,10000)))
-        
-        samples = []
-        while len(samples) < np.prod(samples_shape):
-            x = np.random.uniform(self.min_supp, self.max_supp, size=1)
-            y = np.random.uniform(0, self.max_pdf, size=1)
-            if y < self.pdf(x):
-                samples.append(x)
-        return np.array(samples).reshape(samples_shape)
     
     def mean(self):
         return self.sigma**2
     
     def var(self):
         return self.gamma*self.sigma**4
+
+
+class SemiCircle(Distribution):
+    def __init__(self,radius):
+        self.radius = radius
+        self.min_supp = 1-radius
+        self.max_supp = 1+radius
+        super().__init__()
+
+    def pdf(self,x):
+        return 2/(np.pi*self.radius**2) * np.sqrt(self.radius**2 - (x-1)**2)
 
 def generate_diagonal(
     shape,
@@ -120,11 +141,15 @@ def generate_diagonal(
     elif mode == "marchenko":
         diag = torch.from_numpy(MarchenkoPastur(config.m,config.n).sample(shape)).to(dtype)
         diag = torch.sqrt(diag)
+    elif mode == "semicircle_phase":
+        mag = torch.from_numpy(SemiCircle(config.radius).sample(shape)).to(dtype)
+        phase = 2 * np.pi * torch.rand(shape)
+        phase = torch.exp(1j * phase)
+        diag = mag * phase
     elif mode == "marchenko_phase":
         mag = torch.from_numpy(MarchenkoPastur(config.m,config.n).sample(shape)).to(dtype)
         mag = torch.sqrt(mag) 
-        phase = torch.rand(shape)
-        phase = 2 * np.pi * phase
+        phase = 2 * np.pi * torch.rand(shape)
         phase = torch.exp(1j * phase)
         diag = mag * phase
     elif mode == "uniform":
@@ -144,11 +169,6 @@ def generate_diagonal(
         diag = values[torch.randint(0, len(values), shape)]
     else:
         raise ValueError(f"Unsupported mode: {mode}")
-    if config.unit_mag is True:
-        diag /= torch.abs(diag)
-        assert torch.allclose(torch.abs(diag), torch.tensor(1.0)), "The magnitudes of the diagonal are not all 1s."
-    if config.complex is False:
-        diag = diag.real * torch.sqrt(torch.tensor(2.0)) # to ensure E[|x|^2] = 1
     return diag.to(device)
 
 class PhaseRetrieval(Physics):
