@@ -1,5 +1,5 @@
 general:
-  name: "structured_uniform_marchenko"
+  name: "structured_marchenko"
   recon: "spec"
   save: True
 
@@ -12,9 +12,9 @@ signal:
     max_scale: 40.0 # max scale for varying magnitude
 
 model:
-  n_layers: 2
+  n_layers: 6
   diagonal:
-    mode: ['uniform_phase','marchenko_phase'] # 'uniform_phase', 'gaussian', 'laplace', 'marchenko', 'student-t', 'uniform', 'triangular'
+    mode: ['marchenko_phase','marchenko_phase','marchenko_phase','marchenko_phase','marchenko_phase','marchenko_phase'] # 'uniform_phase', 'gaussian', 'laplace', 'marchenko', 'student-t', 'uniform', 'triangular'
     config:
       #degree_of_freedom: 30
       radius: 0.8

@@ -63,7 +63,7 @@ class Distribution(ABC):
         return np.array(samples).reshape(samples_shape)
 
 
-class MarchenkoPastur:
+class MarchenkoPastur(Distribution):
     def __init__(self,m,n,sigma=None):
         self.m = np.array(m)
         self.n = np.array(n)
@@ -73,8 +73,8 @@ class MarchenkoPastur:
             self.sigma = np.array(sigma)
         else:
             # automatically set sigma to make E[|x|^2] = 1
-            self.sigma = (1+self.gamma)**(-0.25)
-            #self.sigma = 1
+            #self.sigma = (1+self.gamma)**(-0.25)
+            self.sigma = 1
         self.lamb = m / n
         self.min_supp = np.array(self.sigma**2*(1-np.sqrt(self.gamma))**2)
         self.max_supp = np.array(self.sigma**2*(1+np.sqrt(self.gamma))**2)
