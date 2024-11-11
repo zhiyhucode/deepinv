@@ -53,14 +53,14 @@ else:
 # save
 if save:
     res_name = config.save.name.format(
-        model_name = model_name,
-        img_mode = config.signal.mode,
+        model_name=model_name,
+        img_mode=config.signal.mode,
         # keep 4 digits of the following numbers
-        oversampling_start = np.round(oversampling_ratios[0].numpy(),4),
-        oversampling_end = np.round(oversampling_ratios[-1].numpy(),4),
-        recon = recon,
-        n_repeats = n_repeats,
-        )
+        oversampling_start=np.round(oversampling_ratios[0].numpy(), 4),
+        oversampling_end=np.round(oversampling_ratios[-1].numpy(), 4),
+        recon=recon,
+        n_repeats=n_repeats,
+    )
     print("res_name:", res_name)
 
     current_time = datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -112,4 +112,4 @@ for i in trange(oversampling_ratios.shape[0]):
 
 # save results
 if save:
-    df_res.to_csv(SAVE_DIR / res_name)    
+    df_res.to_csv(SAVE_DIR / res_name)

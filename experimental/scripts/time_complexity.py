@@ -45,4 +45,3 @@ for img_size in tqdm(img_sizes):
         df_random_cpu.loc[i, f"img_size_{img_size}"] = time() - init_time
 
 df_random_cpu.to_csv("df_random_cpu.csv", index=False)
-

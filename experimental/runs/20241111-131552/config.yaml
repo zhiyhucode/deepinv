@@ -1,5 +1,5 @@
 general:
-  name: "full-product4"
+  name: "full-product3"
   recon: "spec"
   save: True
 
@@ -16,7 +16,7 @@ model:
     use_haar: False
     circulant: False
     unit_mag: False
-    product: 4
+    product: 3
 
 recon:
   series: "arange"

@@ -45,7 +45,7 @@ step_size = 1e-3
 start = 90
 end = 144
 output_sizes = torch.arange(start, end, 2)
-#output_sizes = torch.tensor([92, 98, 104, 108, 112, 116, 120, 124, 128, 132, 136, 140])
+# output_sizes = torch.tensor([92, 98, 104, 108, 112, 116, 120, 124, 128, 132, 136, 140])
 oversampling_ratios = output_sizes**2 / img_size**2
 n_oversampling = oversampling_ratios.shape[0]
 

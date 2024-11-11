@@ -97,7 +97,7 @@ class CompressedSensing(LinearPhysics):
         channelwise=False,
         dtype=torch.float,
         device="cpu",
-        config:DotMap=None,
+        config: DotMap = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -129,7 +129,7 @@ class CompressedSensing(LinearPhysics):
                 self._A = torch.randn((m, n), device=device, dtype=dtype) / np.sqrt(m)
                 self._A, R = torch.linalg.qr(self._A)
                 L = torch.sgn(torch.diag(R))
-                self._A = self._A * L[None, :]      
+                self._A = self._A * L[None, :]
                 self._A = torch.nn.Parameter(self._A, requires_grad=False)
             elif config.circulant is True:
                 # generate a random row and use it to construct a circulant matrix
@@ -137,12 +137,18 @@ class CompressedSensing(LinearPhysics):
                 v = torch.randn((dim,), device=device, dtype=dtype)
                 self._A = torch.stack([torch.roll(v, shifts=-i) for i in range(dim)])
                 # reshape to emulate oversampling/undersampling
-                self._A = self._A[:m,:n] / np.sqrt(m)
+                self._A = self._A[:m, :n] / np.sqrt(m)
             else:
                 self._A = torch.randn((m, n), device=device, dtype=dtype)
+                self._A = self._A / np.sqrt(m)
+                # product of Gaussian matrices
+                for i in range(config.product - 1):
+                    gaussian = torch.randn(
+                        (m, m), device=device, dtype=dtype
+                    ) / np.sqrt(m)
+                    self._A = gaussian @ self._A
                 if config.unit_mag is True:
                     self._A = self._A / self._A.abs()
-                self._A = self._A / np.sqrt(m)
                 self._A = torch.nn.Parameter(self._A, requires_grad=False)
 
             if config.compute_inverse is True:
@@ -150,10 +156,10 @@ class CompressedSensing(LinearPhysics):
                 self._A_dagger = torch.nn.Parameter(self._A_dagger, requires_grad=False)
 
             self._A_adjoint = (
-                    torch.nn.Parameter(self._A.conj().T, requires_grad=False)
-                    .type(dtype)
-                    .to(device)
-                )
+                torch.nn.Parameter(self._A.conj().T, requires_grad=False)
+                .type(dtype)
+                .to(device)
+            )
 
     def A(self, x):
         N, C = x.shape[:2]
