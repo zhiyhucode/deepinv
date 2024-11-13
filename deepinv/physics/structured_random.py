@@ -1,0 +1,425 @@
+from abc import ABC, abstractmethod
+import math
+
+from hadamard_transform import hadamard_transform
+import numpy as np
+from scipy.fft import dct, idct
+import torch
+
+from deepinv.physics.forward import LinearPhysics
+
+
+class Distribution(ABC):
+    def __init__(self):
+        self.max_pdf = None
+
+    @abstractmethod
+    def pdf(self, x):
+        pass
+
+    def sample(self, samples_shape):
+        """using acceptance-rejection sampling"""
+        # compute the maximum value of the pdf if not yet computed
+        if self.max_pdf is None:
+            self.max_pdf = np.max(
+                self.pdf(np.linspace(self.min_supp + 1e-8, self.max_supp - 1e-8, 10000))
+            )
+
+        samples = []
+        while len(samples) < np.prod(samples_shape):
+            x = np.random.uniform(self.min_supp, self.max_supp, size=1)
+            y = np.random.uniform(0, self.max_pdf, size=1)
+            if y < self.pdf(x):
+                samples.append(x)
+        return np.array(samples).reshape(samples_shape)
+
+
+def triangular_distribution(a, size):
+    u = torch.rand(size)  # Sample from uniform distribution [0, 1]
+
+    # Apply inverse transform method for triangular distribution
+    condition = u < 0.5
+    samples = torch.zeros(size)
+
+    # Left part of the triangular distribution
+    samples[condition] = -a + torch.sqrt(u[condition] * 2 * a**2)
+
+    # Right part of the triangular distribution
+    samples[~condition] = a - torch.sqrt((1 - u[~condition]) * 2 * a**2)
+
+    return samples
+
+
+class MarchenkoPastur(Distribution):
+    def __init__(self, m, n, sigma=None):
+        self.m = np.array(m)
+        self.n = np.array(n)
+        # when oversampling ratio is 1, the distribution has min support at 0, leading to a very high peak near 0 and numerical issues.
+        self.gamma = np.array(n / m)
+        if sigma is not None:
+            self.sigma = np.array(sigma)
+        else:
+            # automatically set sigma to make E[|x|^2] = 1
+            # self.sigma = (1+self.gamma)**(-0.25)
+            self.sigma = 1
+        self.lamb = m / n
+        self.min_supp = np.array(self.sigma**2 * (1 - np.sqrt(self.gamma)) ** 2)
+        self.max_supp = np.array(self.sigma**2 * (1 + np.sqrt(self.gamma)) ** 2)
+        super().__init__()
+
+    def pdf(self, x):
+        assert (x >= self.min_supp).all() and (
+            x <= self.max_supp
+        ).all(), "x is out of the support of the distribution"
+        return np.sqrt((self.max_supp - x) * (x - self.min_supp)) / (
+            2 * np.pi * self.sigma**2 * self.gamma * x
+        )
+
+    def mean(self):
+        return self.sigma**2
+
+    def var(self):
+        return self.gamma * self.sigma**4
+
+
+class SemiCircle(Distribution):
+    def __init__(self, radius):
+        self.radius = radius
+        self.min_supp = 1 - radius
+        self.max_supp = 1 + radius
+        super().__init__()
+
+    def pdf(self, x):
+        return 2 / (np.pi * self.radius**2) * np.sqrt(self.radius**2 - (x - 1) ** 2)
+
+
+def compare(input_shape: tuple, output_shape: tuple) -> str:
+    r"""
+    Compare input and output shape to determine the sampling mode.
+
+    :param tuple input_shape: Input shape (C, H, W).
+    :param tuple output_shape: Output shape (C, H, W).
+
+    :return: The sampling mode in ["oversampling","undersampling","equisampling].
+    """
+    if input_shape[1] == output_shape[1] and input_shape[2] == output_shape[2]:
+        return "equisampling"
+    elif input_shape[1] <= output_shape[1] and input_shape[2] <= output_shape[2]:
+        return "oversampling"
+    elif input_shape[1] >= output_shape[1] and input_shape[2] >= output_shape[2]:
+        return "undersampling"
+    else:
+        raise ValueError(
+            "Does not support different sampling schemes on height and width."
+        )
+
+
+def padding(tensor: torch.Tensor, input_shape: tuple, output_shape: tuple):
+    r"""
+    Zero padding function for oversampling in structured random phase retrieval.
+
+    :param torch.Tensor tensor: input tensor.
+    :param tuple input_shape: shape of the input tensor.
+    :param tuple output_shape: shape of the output tensor.
+
+    :return: (torch.Tensor) the zero-padded tensor.
+    """
+    assert (
+        tensor.shape[1:] == input_shape
+    ), f"tensor doesn't have the correct shape {tensor.shape[1:]} != {input_shape}"
+    change_top = math.ceil(abs(input_shape[1] - output_shape[1]) / 2)
+    change_bottom = math.floor(abs(input_shape[1] - output_shape[1]) / 2)
+    change_left = math.ceil(abs(input_shape[2] - output_shape[2]) / 2)
+    change_right = math.floor(abs(input_shape[2] - output_shape[2]) / 2)
+    assert change_top + change_bottom == abs(input_shape[1] - output_shape[1])
+    assert change_left + change_right == abs(input_shape[2] - output_shape[2])
+    return torch.nn.ZeroPad2d((change_left, change_right, change_top, change_bottom))(
+        tensor
+    )
+
+
+def trimming(tensor: torch.Tensor, input_shape: tuple, output_shape: tuple):
+    r"""
+    Trimming function for undersampling in structured random phase retrieval.
+
+    :param torch.Tensor tensor: input tensor.
+    :param tuple input_shape: shape of the input tensor.
+    :param tuple output_shape: shape of the output tensor.
+
+    :return: (torch.Tensor) the trimmed tensor.
+    """
+    assert (
+        tensor.shape[1:] == input_shape
+    ), f"tensor doesn't have the correct shape {tensor.shape[1:]} != {input_shape}"
+    change_top = math.ceil(abs(input_shape[1] - output_shape[1]) / 2)
+    change_bottom = math.floor(abs(input_shape[1] - output_shape[1]) / 2)
+    change_left = math.ceil(abs(input_shape[2] - output_shape[2]) / 2)
+    change_right = math.floor(abs(input_shape[2] - output_shape[2]) / 2)
+    assert change_top + change_bottom == abs(input_shape[1] - output_shape[1])
+    assert change_left + change_right == abs(input_shape[2] - output_shape[2])
+    if change_bottom == 0:
+        tensor = tensor[..., change_top:, :]
+    else:
+        tensor = tensor[..., change_top:-change_bottom, :]
+    if change_right == 0:
+        tensor = tensor[..., change_left:]
+    else:
+        tensor = tensor[..., change_left:-change_right]
+    return tensor
+
+
+def generate_diagonal(
+    shape,
+    mode,
+    config: dict = None,
+    dtype=torch.complex64,
+    device="cpu",
+    generator=torch.Generator("cpu"),
+):
+    r"""
+    Generate a random tensor as the diagonal matrix.
+    """
+
+    #! all distributions should be normalized to have E[|x|^2] = 1
+    if mode == "uniform_phase":
+        diag = torch.rand(shape)
+        diag = 2 * np.pi * diag
+        diag = torch.exp(1j * diag)
+    elif mode == "rademacher":
+        diag = torch.where(
+            torch.rand(shape, device=device, generator=generator) > 0.5, -1.0, 1.0
+        )
+    elif mode == "uniform_magnitude":
+        # ensure E[|x|^2] = 1
+        diag = torch.sqrt(torch.tensor(3.0)) * torch.rand(shape)
+        diag = diag.to(dtype)
+    elif mode == "gaussian":
+        diag = torch.randn(shape, dtype=dtype)
+    elif mode == "laplace":
+        #! variance = 2*scale^2
+        #! variance of complex numbers is doubled
+        laplace_dist = torch.distributions.laplace.Laplace(0, 0.5)
+        diag = laplace_dist.sample(shape) + 1j * laplace_dist.sample(shape)
+    elif mode == "student-t":
+        #! variance = df/(df-2) if df > 2
+        #! variance of complex numbers is doubled
+        student_t_dist = torch.distributions.studentT.StudentT(
+            config["degree_of_freedom"], 0, 1
+        )
+        scale = torch.sqrt(
+            (torch.tensor(config["degree_of_freedom"]) - 2)
+            / torch.tensor(config["degree_of_freedom"])
+            / 2
+        )
+        diag = (
+            scale * (student_t_dist.sample(shape) + 1j * student_t_dist.sample(shape))
+        ).to(device)
+    elif mode == "marchenko":
+        diag = torch.from_numpy(
+            MarchenkoPastur(config["m"], config["n"]).sample(shape)
+        ).to(dtype)
+        diag = torch.sqrt(diag)
+    elif mode == "semicircle_phase":
+        mag = torch.from_numpy(SemiCircle(config["radius"]).sample(shape)).to(dtype)
+        phase = 2 * np.pi * torch.rand(shape)
+        phase = torch.exp(1j * phase)
+        diag = mag * phase
+    elif mode == "marchenko_phase":
+        mag = torch.from_numpy(
+            MarchenkoPastur(config["m"], config["n"]).sample(shape)
+        ).to(dtype)
+        mag = torch.sqrt(mag)
+        phase = 2 * np.pi * torch.rand(shape)
+        phase = torch.exp(1j * phase)
+        diag = mag * phase
+    elif mode == "uniform":
+        #! variance = 1/2a for real numbers
+        real = torch.sqrt(torch.tensor(6)) * (
+            torch.rand(shape, dtype=torch.float32) - 0.5
+        )
+        imag = torch.sqrt(torch.tensor(6)) * (
+            torch.rand(shape, dtype=torch.float32) - 0.5
+        )
+        diag = real + 1j * imag
+    elif mode == "triangular":
+        #! variance = a^2/6 for real numbers
+        real = triangular_distribution(torch.sqrt(torch.tensor(3)), shape)
+        imag = triangular_distribution(torch.sqrt(torch.tensor(3)), shape)
+        diag = real + 1j * imag
+    elif mode == "polar4":
+        # generate random phase 1, -1, j, -j
+        values = torch.tensor([1, -1, 1j, -1j])
+        # Randomly select elements from the values with equal probability
+        diag = values[torch.randint(0, len(values), shape)]
+    else:
+        raise ValueError(f"Unsupported mode: {mode}")
+    return diag.to(device)
+
+
+def dst1(x):
+    r"""
+    Orthogonal Discrete Sine Transform, Type I
+    The transform is performed across the last dimension of the input signal
+    Due to orthogonality we have ``dst1(dst1(x)) = x``.
+
+    :param torch.Tensor x: the input signal
+    :return: (torch.tensor) the DST-I of the signal over the last dimension
+
+    """
+    x_shape = x.shape
+
+    b = int(np.prod(x_shape[:-1]))
+    n = x_shape[-1]
+    x = x.view(-1, n)
+
+    z = torch.zeros(b, 1, device=x.device)
+    x = torch.cat([z, x, z, -x.flip([1])], dim=1)
+    x = torch.view_as_real(torch.fft.rfft(x, norm="ortho"))
+    x = x[:, 1:-1, 1]
+    return x.view(*x_shape)
+
+
+def dct2(x: torch.Tensor, device):
+    r"""2D DCT
+
+    DCT is performed along the last two dimensions of the input tensor.
+    """
+    return torch.from_numpy(
+        dct(dct(x.cpu().numpy(), axis=-1, norm="ortho"), axis=-2, norm="ortho")
+    ).to(device)
+
+
+def idct2(x: torch.Tensor, device):
+    r"""2D IDCT
+
+    IDCT is performed along the last two dimensions of the input tensor.
+    """
+    return torch.from_numpy(
+        idct(idct(x.cpu().numpy(), axis=-2, norm="ortho"), axis=-1, norm="ortho")
+    ).to(device)
+
+
+def hadamard2(x):
+
+    assert x.dim() == 4, "Input tensor must have shape (N, C, H, W)"
+    n, c, h, w = x.shape
+
+    def hadamard_single_channel(x):
+        assert x.dim() == 2, "Input tensor must have shape (H, W)"
+        transformed_rows = torch.stack([hadamard_transform(row) for row in x], dim=0)
+        transformed_columns = torch.stack(
+            [hadamard_transform(col) for col in transformed_rows.transpose(0, 1)], dim=0
+        )
+        return transformed_columns.transpose(0, 1)
+
+    transformed_tensor = torch.stack(
+        [
+            torch.stack([hadamard_single_channel(x[i, j]) for j in range(c)], dim=0)
+            for i in range(n)
+        ],
+        dim=0,
+    )
+    return transformed_tensor
+
+
+class StructuredRandom(LinearPhysics):
+    r"""
+    Structured random linear operator model corresponding to the operator
+
+    .. math::
+
+        A(x) = \prod_{i=1}^N (F D_i) x,
+
+    where :math:`F` is a matrix representing a structured transform, :math:`D_i` are diagonal matrices, and :math:`N` refers to the number of layers. It is also possible to replace :math:`x` with :math:`Fx` as an additional 0.5 layer.
+
+    :param tuple input_shape: input shape. If (C, H, W), i.e., the input is a 2D signal with C channels, then zero-padding will be used for oversampling and cropping will be used for undersampling.
+    :param tuple output_shape: shape of outputs.
+    :param float n_layers: number of layers :math:`N`. If ``layers=N + 0.5``, a first :math`F` transform is included, ie :math:`A(x)=|\prod_{i=1}^N (F D_i) F x|^2`. Default is 1.
+    :param function transform_func: structured transform function. Default is :meth:`deepinv.physics.structured_random.dst1`.
+    :param function transform_func_inv: structured inverse transform function. Default is :meth:`deepinv.physics.structured_random.dst1`.
+    :param list diagonals: list of diagonal matrices. If None, a random :math:`{-1,+1}` mask matrix will be used. Default is None.
+    :param str device: device of the physics. Default is 'cpu'.
+    :param torch.Generator rng: Random number generator. Default is None.
+    """
+
+    def __init__(
+        self,
+        input_shape: tuple,
+        output_shape: tuple,
+        middle_shape: tuple = None,
+        n_layers=1,
+        transform_func=dst1,
+        transform_func_inv=dst1,
+        diagonals=None,
+        device="cpu",
+        rng: torch.Generator = None,
+        **kwargs,
+    ):
+
+        if len(input_shape) == 3:
+            mode = compare(input_shape, output_shape)
+        else:
+            mode = None
+
+        if diagonals is None:
+            diagonals = [
+                generate_diagonal(
+                    shape=input_shape,
+                    mode="rademacher",
+                    dtype=torch.float,
+                    generator=rng,
+                    device=device,
+                )
+            ]
+
+        def A(x):
+
+            assert (
+                x.shape[1:] == input_shape
+            ), f"x doesn't have the correct shape {x.shape[1:]} != {input_shape}"
+
+            if transform_func == hadamard2:
+                x = padding(x, input_shape, middle_shape)
+            elif mode == "oversampling":
+                x = padding(x, input_shape, output_shape)
+
+            if n_layers - math.floor(n_layers) == 0.5:
+                x = transform_func(x)
+            for i in range(math.floor(n_layers)):
+                diagonal = diagonals[i]
+                x = diagonal * x
+                x = transform_func(x)
+
+            if transform_func == hadamard2:
+                x = trimming(x, middle_shape, output_shape)
+            elif mode == "undersampling":
+                x = trimming(x, input_shape, output_shape)
+
+            return x
+
+        def A_adjoint(y):
+
+            assert (
+                y.shape[1:] == output_shape
+            ), f"y doesn't have the correct shape {y.shape[1:]} != {output_shape}"
+
+            if transform_func == hadamard2:
+                y = padding(y, output_shape, middle_shape)
+            elif mode == "undersampling":
+                y = padding(y, output_shape, input_shape)
+
+            for i in range(math.floor(n_layers)):
+                diagonal = diagonals[-i - 1]
+                y = transform_func_inv(y)
+                y = torch.conj(diagonal) * y
+            if n_layers - math.floor(n_layers) == 0.5:
+                y = transform_func_inv(y)
+
+            if transform_func == hadamard2:
+                y = trimming(y, middle_shape, input_shape)
+            elif mode == "oversampling":
+                y = trimming(y, output_shape, input_shape)
+
+            return y
+
+        super().__init__(A=A, A_adjoint=A_adjoint, **kwargs)

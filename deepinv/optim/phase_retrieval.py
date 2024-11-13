@@ -1,6 +1,5 @@
 import os
 
-from dotmap import DotMap
 from matplotlib.patches import Patch
 import matplotlib.pyplot as plt
 import numpy as np
@@ -10,13 +9,6 @@ import torch
 import yaml
 
 from deepinv.utils.demo import load_url_image, get_image_url
-
-
-# Load configuration from YAML file
-def load_config(config_file):
-    with open(config_file, "r") as file:
-        config_dict = yaml.safe_load(file)
-    return DotMap(config_dict)
 
 
 def permute(arr: torch.tensor) -> torch.tensor:
@@ -36,7 +28,7 @@ def generate_signal(
     img_size,
     mode,
     transform=None,
-    config=None,
+    config: dict = None,
     dtype=torch.complex64,
     device="cpu",
 ):
@@ -56,7 +48,9 @@ def generate_signal(
         img = torch.zeros((1, 1, img_size, img_size), device=device)
         img[0, 0, img_size // 2, img_size // 2] = 1.0
     elif mode == "constant":
-        img == config.constant * torch.ones((1, 1, img_size, img_size), device=device)
+        img == config["constant"] * torch.ones(
+            (1, 1, img_size, img_size), device=device
+        )
     elif mode == "polar":
         # Create a tensor of probabilities (0.5 for each element)
         probabilities = torch.full((1, 1, img_size, img_size), 0.5)
@@ -71,44 +65,22 @@ def generate_signal(
             img = permute(img)
         elif transform == "noise":
             img = (
-                img * (1 - config.noise_ratio)
-                + torch.rand_like(img) * config.noise_ratio
+                img * (1 - config["noise_ratio"])
+                + torch.rand_like(img) * config["noise_ratio"]
             )
         else:
             raise ValueError("Invalid transform.")
     # generate phase signal
     # the phase is computed as pi*x - 0.5pi, where x is the original image.
     x = torch.exp(1j * img * torch.pi - 0.5j * torch.pi).to(device)
-    if config.unit_mag is True:
+    if config["unit_mag"] is True:
         assert torch.allclose(
             x.abs(), torch.tensor(1.0)
         ), "The magnitudes of the signal are not all 1s."
     else:
-        scale = config.max_scale * torch.rand_like(x, dtype=torch.float)
+        scale = config["max_scale"] * torch.rand_like(x, dtype=torch.float)
         x = x * scale
     return x
-
-
-def compare(a: int, b: int):
-    if a > b:
-        return ">"
-    elif a < b:
-        return "<"
-    else:
-        return "="
-
-
-def merge_order(a: str, b: str):
-    if a == ">" and b == "<":
-        return "!"
-    elif a == "<" and b == ">":
-        return "!"
-    elif a == ">" or b == ">":
-        return ">"
-    elif a == "<" or b == "<":
-        return "<"
-    else:
-        return "="
 
 
 def default_preprocessing(y, physics):

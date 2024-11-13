@@ -7,7 +7,6 @@
 # VSCode
 .vscode/
 
-results/
 *__pycache__*
 *.pyc
 
@@ -40,6 +39,5 @@ kernels
 measurements/
 degradations/
 datasets/
-results/
 tmp/
 sg_execution_times.rst
