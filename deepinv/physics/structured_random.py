@@ -180,79 +180,77 @@ def generate_diagonal(
     Generate a random tensor as the diagonal matrix.
     """
 
-    #! all distributions should be normalized to have E[|x|^2] = 1
-    if mode == "uniform_phase":
-        diag = torch.rand(shape)
-        diag = 2 * np.pi * diag
-        diag = torch.exp(1j * diag)
-    elif mode == "rademacher":
-        diag = torch.where(
-            torch.rand(shape, device=device, generator=generator) > 0.5, -1.0, 1.0
-        )
-    elif mode == "uniform_magnitude":
-        # ensure E[|x|^2] = 1
-        diag = torch.sqrt(torch.tensor(3.0)) * torch.rand(shape)
-        diag = diag.to(dtype)
-    elif mode == "gaussian":
-        diag = torch.randn(shape, dtype=dtype)
-    elif mode == "laplace":
-        #! variance = 2*scale^2
-        #! variance of complex numbers is doubled
-        laplace_dist = torch.distributions.laplace.Laplace(0, 0.5)
-        diag = laplace_dist.sample(shape) + 1j * laplace_dist.sample(shape)
-    elif mode == "student-t":
-        #! variance = df/(df-2) if df > 2
-        #! variance of complex numbers is doubled
-        student_t_dist = torch.distributions.studentT.StudentT(
-            config["degree_of_freedom"], 0, 1
-        )
-        scale = torch.sqrt(
-            (torch.tensor(config["degree_of_freedom"]) - 2)
-            / torch.tensor(config["degree_of_freedom"])
-            / 2
-        )
-        diag = (
-            scale * (student_t_dist.sample(shape) + 1j * student_t_dist.sample(shape))
-        ).to(device)
-    elif mode == "marchenko":
-        diag = torch.from_numpy(
-            MarchenkoPastur(config["m"], config["n"]).sample(shape)
-        ).to(dtype)
-        diag = torch.sqrt(diag)
-    elif mode == "semicircle_phase":
-        mag = torch.from_numpy(SemiCircle(config["radius"]).sample(shape)).to(dtype)
-        phase = 2 * np.pi * torch.rand(shape)
-        phase = torch.exp(1j * phase)
+    if isinstance(mode, str):
+        if mode == "rademacher":
+            diag = torch.where(
+                torch.rand(shape, device=device, generator=generator) > 0.5, -1.0, 1.0
+            )
+        elif mode == "gaussian":
+            diag = torch.randn(shape, dtype=dtype)
+        elif mode == "student-t":
+            #! variance = df/(df-2) if df > 2
+            #! variance of complex numbers is doubled
+            student_t_dist = torch.distributions.studentT.StudentT(
+                config["degree_of_freedom"], 0, 1
+            )
+            scale = torch.sqrt(
+                (torch.tensor(config["degree_of_freedom"]) - 2)
+                / torch.tensor(config["degree_of_freedom"])
+                / 2
+            )
+            diag = (
+                scale * (student_t_dist.sample(shape) + 1j * student_t_dist.sample(shape))
+            )
+        elif mode == "triangular":
+            #! variance = a^2/6 for real numbers
+            real = triangular_distribution(torch.sqrt(torch.tensor(3)), shape)
+            imag = triangular_distribution(torch.sqrt(torch.tensor(3)), shape)
+            diag = real + 1j * imag
+        else:
+            raise ValueError(f"Unsupported mode: {mode}")
+    elif isinstance(mode, list):
+        assert len(mode) == 2, "mode must be a list of two elements to specify the magnitude and phase distributions"
+        mag, phase = mode
+        #! should be normalized to have E[|x|^2] = 1 if energy conservation
+        if mode[0] == "unit":
+            mag = torch.ones(shape, dtype=dtype)
+        elif mode[0] == "uniform":
+            # ensure E[|x|^2] = 1
+            mag = torch.sqrt(torch.tensor(3.0)) * torch.rand(shape)
+            mag = mag.to(dtype)
+        elif mode[0] == "marchenko":
+            mag = torch.from_numpy(
+                MarchenkoPastur(config["m"], config["n"]).sample(shape)
+            ).to(dtype)
+            mag = torch.sqrt(mag)
+        elif mode[0] == "semicircle":
+            mag = torch.from_numpy(SemiCircle(config["radius"]).sample(shape)).to(dtype)
+        else:
+            raise ValueError(f"Unsupported magnitude: {mode[0]}")
+
+        if mode[1] == "uniform":
+            phase = 2 * np.pi * torch.rand(shape)
+            phase = torch.exp(1j * phase)
+        elif mode[1] == "zero":
+            phase = torch.ones(shape, dtype=dtype)
+        elif mode[1] == "laplace":
+            #! variance = 2*scale^2
+            #! variance of complex numbers is doubled
+            laplace_dist = torch.distributions.laplace.Laplace(0, 0.5)
+            phase = laplace_dist.sample(shape) + 1j * laplace_dist.sample(shape)
+            phase = phase / phase.abs()
+        elif mode[1] == "quadrant":
+            # generate random phase 1, -1, j, -j
+            values = torch.tensor([1, -1, 1j, -1j])
+            # Randomly select elements from the values with equal probability
+            phase = values[torch.randint(0, len(values), shape)]
+        else:
+            raise ValueError(f"Unsupported phase: {mode[1]}")
+        
         diag = mag * phase
-    elif mode == "marchenko_phase":
-        mag = torch.from_numpy(
-            MarchenkoPastur(config["m"], config["n"]).sample(shape)
-        ).to(dtype)
-        mag = torch.sqrt(mag)
-        phase = 2 * np.pi * torch.rand(shape)
-        phase = torch.exp(1j * phase)
-        diag = mag * phase
-    elif mode == "uniform":
-        #! variance = 1/2a for real numbers
-        real = torch.sqrt(torch.tensor(6)) * (
-            torch.rand(shape, dtype=torch.float32) - 0.5
-        )
-        imag = torch.sqrt(torch.tensor(6)) * (
-            torch.rand(shape, dtype=torch.float32) - 0.5
-        )
-        diag = real + 1j * imag
-    elif mode == "triangular":
-        #! variance = a^2/6 for real numbers
-        real = triangular_distribution(torch.sqrt(torch.tensor(3)), shape)
-        imag = triangular_distribution(torch.sqrt(torch.tensor(3)), shape)
-        diag = real + 1j * imag
-    elif mode == "polar4":
-        # generate random phase 1, -1, j, -j
-        values = torch.tensor([1, -1, 1j, -1j])
-        # Randomly select elements from the values with equal probability
-        diag = values[torch.randint(0, len(values), shape)]
     else:
         raise ValueError(f"Unsupported mode: {mode}")
+
     return diag.to(device)
 
 
