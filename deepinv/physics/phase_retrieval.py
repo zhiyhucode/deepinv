@@ -62,8 +62,7 @@ class PhaseRetrieval(Physics):
         return spectral_methods(y, self, **kwargs)
 
     def A_adjoint(self, y: torch.Tensor, **kwargs) -> torch.Tensor:
-        return self.A_dagger(y, **kwargs)
-
+        r"""
         We use the spectral methods defined in :class:`deepinv.optim.phase_retrieval.spectral_methods` to obtain an initial inverse.
 
         :param torch.Tensor y: measurements.
