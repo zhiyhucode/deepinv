@@ -2,7 +2,12 @@ r"""
 Random phase retrieval and reconstruction methods.
 ===================================================
 
-This example demonstrates how to create a random phase retrieval operator and use it to generate measurements from a given image. We then uses 4 different reconstruction methods to recover the image given theses measurements: 1. Gradient descent with random initialization; 2. Spectral methods; 3. Gradient descent with spectral methods initialization; 4. Gradient descent with PnP denoisers.
+This example shows how to create a random phase retrieval operator and generate phaseless measurements from a given image. The example showcases 4 different reconstruction methods to recover the image from the phaseless measurements:
+
+#. Gradient descent with random initialization;
+#. Spectral methods;
+#. Gradient descent with spectral methods initialization;
+#. Gradient descent with PnP denoisers.
 
 """
 

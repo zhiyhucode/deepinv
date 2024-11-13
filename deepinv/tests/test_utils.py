@@ -78,10 +78,11 @@ def test_tensordict_append(tensorlist):
 def test_plot():
     for c in range(1, 5):
         x = torch.ones((1, c, 2, 2))
-        imgs = [x, x]
-        deepinv.utils.plot(imgs, titles=["a", "b"], show=False)
+        titles, imgs = ["a", "b"], [x, x]
+        deepinv.utils.plot(imgs, titles=titles, show=False)
         deepinv.utils.plot(x, titles="a", show=False)
         deepinv.utils.plot(imgs, show=False)
+        deepinv.utils.plot({k: v for k, v in zip(titles, imgs)}, show=False)
 
 
 def test_plot_inset():
@@ -100,3 +101,21 @@ def test_plot_inset():
         show=False,
         save_fn="temp.png",
     )
+
+
+def test_plot_videos():
+    x = torch.rand((1, 3, 5, 8, 8))  # B,C,T,H,W image sequence
+    y = torch.rand((1, 3, 5, 16, 16))
+    deepinv.utils.plot_videos(
+        [x, y], display=True
+    )  # this should generate warning without IPython installed
+    deepinv.utils.plot_videos([x, y], save_fn="vid.gif")
+
+
+def test_plot_ortho3D():
+    for c in range(1, 5):
+        x = torch.ones((1, c, 2, 2, 2))
+        imgs = [x, x]
+        deepinv.utils.plot_ortho3D(imgs, titles=["a", "b"], show=False)
+        deepinv.utils.plot_ortho3D(x, titles="a", show=False)
+        deepinv.utils.plot_ortho3D(imgs, show=False)
