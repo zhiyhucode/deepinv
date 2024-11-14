@@ -1,5 +1,5 @@
 general:
-  name: "structured_dct_marchenko"
+  name: "structured_marchenko_laplace"
   recon: "spec"
   save: True
 
@@ -14,12 +14,12 @@ signal:
 model:
   n_layers: 2
   diagonal:
-    mode: [['marchenko','uniform'],['marchenko','uniform']] # 'uniform_phase', 'gaussian', 'laplace', 'marchenko', 'student-t', 'uniform', 'triangular'
+    mode: [['marchenko','laplace'],['marchenko','laplace']] # 'uniform_phase', 'gaussian', 'laplace', 'marchenko', 'student-t', 'uniform', 'triangular'
     config:
       placeholder: 0 # use when no config
       #degree_of_freedom: 30
       #radius: 0.8
-  transform: "dct" # 'fft', 'dct', 'hadamard'
+  transform: "fft" # 'fft', 'dct', 'hadamard'
   shared_weights: False
 
 recon:

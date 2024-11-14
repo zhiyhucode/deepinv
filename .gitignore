@@ -30,7 +30,6 @@
 
 # Miscellaneous
 /deepinv/datasets/reside/
-/experimental/
 /datasets
 examples/*/datasets
 deepinv/version.py

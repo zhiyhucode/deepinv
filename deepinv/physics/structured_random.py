@@ -198,8 +198,8 @@ def generate_diagonal(
                 / torch.tensor(config["degree_of_freedom"])
                 / 2
             )
-            diag = (
-                scale * (student_t_dist.sample(shape) + 1j * student_t_dist.sample(shape))
+            diag = scale * (
+                student_t_dist.sample(shape) + 1j * student_t_dist.sample(shape)
             )
         elif mode == "triangular":
             #! variance = a^2/6 for real numbers
@@ -209,7 +209,9 @@ def generate_diagonal(
         else:
             raise ValueError(f"Unsupported mode: {mode}")
     elif isinstance(mode, list):
-        assert len(mode) == 2, "mode must be a list of two elements to specify the magnitude and phase distributions"
+        assert (
+            len(mode) == 2
+        ), "mode must be a list of two elements to specify the magnitude and phase distributions"
         mag, phase = mode
         #! should be normalized to have E[|x|^2] = 1 if energy conservation
         if mode[0] == "unit":
@@ -246,7 +248,7 @@ def generate_diagonal(
             phase = values[torch.randint(0, len(values), shape)]
         else:
             raise ValueError(f"Unsupported phase: {mode[1]}")
-        
+
         diag = mag * phase
     else:
         raise ValueError(f"Unsupported mode: {mode}")
