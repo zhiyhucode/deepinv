@@ -17,8 +17,7 @@ class Distribution(ABC):
     def pdf(self, x):
         pass
 
-    def sample(self, samples_shape):
-        """using acceptance-rejection sampling"""
+    def sample(self, shape: tuple[int, ...]) -> np.ndarray:
         # compute the maximum value of the pdf if not yet computed
         if self.max_pdf is None:
             self.max_pdf = np.max(
@@ -26,12 +25,12 @@ class Distribution(ABC):
             )
 
         samples = []
-        while len(samples) < np.prod(samples_shape):
+        while len(samples) < np.prod(shape):
             x = np.random.uniform(self.min_supp, self.max_supp, size=1)
             y = np.random.uniform(0, self.max_pdf, size=1)
             if y < self.pdf(x):
                 samples.append(x)
-        return np.array(samples).reshape(samples_shape)
+        return np.array(samples).reshape(shape)
 
 
 def triangular_distribution(a, size):
@@ -67,13 +66,29 @@ class MarchenkoPastur(Distribution):
         self.max_supp = np.array(self.sigma**2 * (1 + np.sqrt(self.gamma)) ** 2)
         super().__init__()
 
-    def pdf(self, x):
+    def pdf(self, x: np.ndarray) -> np.ndarray:
         assert (x >= self.min_supp).all() and (
             x <= self.max_supp
         ).all(), "x is out of the support of the distribution"
         return np.sqrt((self.max_supp - x) * (x - self.min_supp)) / (
             2 * np.pi * self.sigma**2 * self.gamma * x
         )
+    
+    def sample(self, shape: tuple[int, ...]) -> np.ndarray:
+        """using acceptance-rejection sampling if oversampling ratio is more than 1, otherwise using the eigenvalues sampled from a real matrix"""
+        if self.m < self.n:
+            # there will be n - m zero eigenvalues, the rest nonzero eigenvalues follow the Marchenko-Pastur distribution
+            n_zeros = int(np.product(shape) / self.n * (self.n - self.m))
+            nonzeros = super().sample((np.product(shape) - n_zeros,))
+            zeros = np.zeros(n_zeros)
+            return np.random.permutation(np.concatenate((nonzeros,zeros))).reshape(shape)
+        elif self.m == self.n:
+            # compute the eigenvalues from a real matrix and use it as the samples
+            X = 1/np.sqrt(self.m) * torch.randn((self.m,self.n),dtype=torch.cfloat)
+            eigenvalues_X, _ = torch.linalg.eig(X.conj().T@X)
+            return np.array(eigenvalues_X).reshape(shape)
+        else:
+            return super().sample(shape)
 
     def mean(self):
         return self.sigma**2
@@ -169,7 +184,7 @@ def trimming(tensor: torch.Tensor, input_shape: tuple, output_shape: tuple):
 
 
 def generate_diagonal(
-    shape,
+    shape: tuple[int, ...],
     mode,
     config: dict = None,
     dtype=torch.complex64,
@@ -198,8 +213,8 @@ def generate_diagonal(
                 / torch.tensor(config["degree_of_freedom"])
                 / 2
             )
-            diag = scale * (
-                student_t_dist.sample(shape) + 1j * student_t_dist.sample(shape)
+            diag = (
+                scale * (student_t_dist.sample(shape) + 1j * student_t_dist.sample(shape))
             )
         elif mode == "triangular":
             #! variance = a^2/6 for real numbers
@@ -209,9 +224,7 @@ def generate_diagonal(
         else:
             raise ValueError(f"Unsupported mode: {mode}")
     elif isinstance(mode, list):
-        assert (
-            len(mode) == 2
-        ), "mode must be a list of two elements to specify the magnitude and phase distributions"
+        assert len(mode) == 2, "mode must be a list of two elements to specify the magnitude and phase distributions"
         mag, phase = mode
         #! should be normalized to have E[|x|^2] = 1 if energy conservation
         if mode[0] == "unit":
@@ -248,7 +261,7 @@ def generate_diagonal(
             phase = values[torch.randint(0, len(values), shape)]
         else:
             raise ValueError(f"Unsupported phase: {mode[1]}")
-
+        
         diag = mag * phase
     else:
         raise ValueError(f"Unsupported mode: {mode}")

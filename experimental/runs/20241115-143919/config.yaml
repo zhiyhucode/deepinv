@@ -24,7 +24,7 @@ model:
 
 recon:
   series: "arange"
-  start: 2
+  start: 66
   end: 194
   list: []
   n_repeats: 50

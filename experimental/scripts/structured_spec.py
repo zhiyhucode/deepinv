@@ -14,8 +14,6 @@ from tqdm import trange
 import yaml
 
 import deepinv as dinv
-from deepinv.utils.demo import load_url_image, get_image_url
-from deepinv.utils.plotting import plot
 from deepinv.optim.phase_retrieval import (
     cosine_similarity,
     spectral_methods,
@@ -102,8 +100,16 @@ df_res = pd.DataFrame(
     }
 )
 
+last_oversampling_ratio = -0.1
+
 for i in trange(n_oversampling):
     oversampling_ratio = oversampling_ratios[i]
+
+    if np.allclose(oversampling_ratio, 1.0, rtol=1e-4):
+        continue
+    if oversampling_ratio - last_oversampling_ratio < 0.05:
+        continue
+
     output_size = output_sizes[i]
     print(f"output_size: {output_size}")
     print(f"oversampling_ratio: {oversampling_ratio}")
@@ -125,7 +131,7 @@ for i in trange(n_oversampling):
         df_res.loc[i, f"repeat{j}"] = cosine_similarity(x, x_spec).item()
         # print the cosine similarity
         print(f"cosine similarity: {df_res.loc[i, f'repeat{j}']}")
-
-# save results
-if save:
-    df_res.to_csv(SAVE_DIR / res_name)
+        # save results
+        if save:
+            df_res.to_csv(SAVE_DIR / res_name)
+    last_oversampling_ratio = oversampling_ratio
