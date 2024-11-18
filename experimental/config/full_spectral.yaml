@@ -1,7 +1,7 @@
 general:
   name: "full-unitary"
   recon: "spec"
-  save: True
+  save: False
 
 signal:
   img_size: 64
@@ -12,13 +12,13 @@ signal:
     #max_scale: 40.0 # max scale for varying mag
 
 model:
-  mode: "unitary" # null, "unitary", "circulant"
+  mode: "null" # null, "unitary", "circulant"
   unit_mag: False
   product: 1
 
 recon:
   series: "arange"
-  start: 1.0
+  start: 0.1
   end: 9.1
   step: 0.1
   list: []

@@ -1,5 +1,5 @@
 general:
-  name: "structured_marchenko_quadrant"
+  name: "structured_quadrant_marchenko"
   recon: "spec"
   save: True
 
@@ -14,7 +14,7 @@ signal:
 model:
   n_layers: 2
   diagonal:
-    mode: [['marchenko','quadrant'],['marchenko','quadrant']] # 'uniform_phase', 'gaussian', 'laplace', 'marchenko', 'student-t', 'uniform', 'triangular'
+    mode: [['marchenko','quadrant'],['unit','quadrant']] # mag: 'unit', 'marchenko', phase: 'uniform', 'laplace', 'quadrant'
     config:
       placeholder: 0 # use when no config
       #degree_of_freedom: 30
@@ -24,7 +24,7 @@ model:
 
 recon:
   series: "arange"
-  start: 66
+  start: 2
   end: 194
   list: []
   n_repeats: 50

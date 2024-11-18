@@ -63,10 +63,9 @@ if save:
         structure=structure,
         img_mode=config["signal"]["mode"],
         # keep 4 digits of the following numbers
-        oversampling_start=np.round(oversampling_ratios[0].numpy(), 4),
-        oversampling_end=np.round(oversampling_ratios[-1].numpy(), 4),
+        # oversampling_start=np.round(oversampling_ratios[0].numpy(), 4),
+        # oversampling_end=np.round(oversampling_ratios[-1].numpy(), 4),
         recon=recon,
-        n_repeats=n_repeats,
     )
     print("res_name:", res_name)
 
@@ -105,8 +104,6 @@ last_oversampling_ratio = -0.1
 for i in trange(n_oversampling):
     oversampling_ratio = oversampling_ratios[i]
 
-    if np.allclose(oversampling_ratio, 1.0, rtol=1e-4):
-        continue
     if oversampling_ratio - last_oversampling_ratio < 0.05:
         continue
 
@@ -135,3 +132,6 @@ for i in trange(n_oversampling):
         if save:
             df_res.to_csv(SAVE_DIR / res_name)
     last_oversampling_ratio = oversampling_ratio
+
+if save:
+    print(f"Experiment {res_name} finished. Results saved at {SAVE_DIR}.")

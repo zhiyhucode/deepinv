@@ -1,5 +1,5 @@
 general:
-  name: "structured_dct_marchenko"
+  name: "structured_dct"
   recon: "spec"
   save: True
 
@@ -14,7 +14,7 @@ signal:
 model:
   n_layers: 2
   diagonal:
-    mode: [['marchenko','uniform'],['marchenko','uniform']] # 'uniform_phase', 'gaussian', 'laplace', 'marchenko', 'student-t', 'uniform', 'triangular'
+    mode: [['marchenko','uniform'],['unit','uniform']] # mag: 'unit', 'marchenko', phase: 'uniform', 'laplace', 'quadrant'
     config:
       placeholder: 0 # use when no config
       #degree_of_freedom: 30
@@ -24,7 +24,7 @@ model:
 
 recon:
   series: "arange"
-  start: 66
+  start: 2
   end: 194
   list: []
   n_repeats: 50
@@ -32,4 +32,4 @@ recon:
 
 save:
   path: "../runs"
-  name: "res_{model_name}_{structure}_{img_mode}_{recon}_{oversampling_start}-{oversampling_end}_{n_repeats}repeat.csv"
+  name: "res_{model_name}_{structure}_{img_mode}_{recon}.csv"
