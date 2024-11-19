@@ -73,7 +73,7 @@ class MarchenkoPastur(Distribution):
         return np.sqrt((self.max_supp - x) * (x - self.min_supp)) / (
             2 * np.pi * self.sigma**2 * self.gamma * x
         )
-    
+
     def sample(self, shape: tuple[int, ...]) -> np.ndarray:
         """using acceptance-rejection sampling if oversampling ratio is more than 1, otherwise using the eigenvalues sampled from a real matrix"""
         if self.m < self.n:
@@ -81,11 +81,13 @@ class MarchenkoPastur(Distribution):
             n_zeros = int(np.product(shape) / self.n * (self.n - self.m))
             nonzeros = super().sample((np.product(shape) - n_zeros,))
             zeros = np.zeros(n_zeros)
-            return np.random.permutation(np.concatenate((nonzeros,zeros))).reshape(shape)
+            return np.random.permutation(np.concatenate((nonzeros, zeros))).reshape(
+                shape
+            )
         elif self.m == self.n:
             # compute the eigenvalues from a real matrix and use it as the samples
-            X = 1/np.sqrt(self.m) * torch.randn((self.m,self.n),dtype=torch.cfloat)
-            eigenvalues_X, _ = torch.linalg.eig(X.conj().T@X)
+            X = 1 / np.sqrt(self.m) * torch.randn((self.m, self.n), dtype=torch.cfloat)
+            eigenvalues_X, _ = torch.linalg.eig(X.conj().T @ X)
             return np.array(eigenvalues_X).reshape(shape)
         else:
             return super().sample(shape)
@@ -213,8 +215,8 @@ def generate_diagonal(
                 / torch.tensor(config["degree_of_freedom"])
                 / 2
             )
-            diag = (
-                scale * (student_t_dist.sample(shape) + 1j * student_t_dist.sample(shape))
+            diag = scale * (
+                student_t_dist.sample(shape) + 1j * student_t_dist.sample(shape)
             )
         elif mode == "triangular":
             #! variance = a^2/6 for real numbers
@@ -224,7 +226,9 @@ def generate_diagonal(
         else:
             raise ValueError(f"Unsupported mode: {mode}")
     elif isinstance(mode, list):
-        assert len(mode) == 2, "mode must be a list of two elements to specify the magnitude and phase distributions"
+        assert (
+            len(mode) == 2
+        ), "mode must be a list of two elements to specify the magnitude and phase distributions"
         mag, phase = mode
         #! should be normalized to have E[|x|^2] = 1 if energy conservation
         if mode[0] == "unit":
@@ -263,7 +267,7 @@ def generate_diagonal(
             phase = values[torch.randint(0, len(values), shape)]
         else:
             raise ValueError(f"Unsupported phase: {mode[1]}")
-        
+
         diag = mag * phase
     else:
         raise ValueError(f"Unsupported mode: {mode}")
