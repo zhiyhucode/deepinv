@@ -240,6 +240,8 @@ def generate_diagonal(
             mag = torch.sqrt(mag)
         elif mode[0] == "semicircle":
             mag = torch.from_numpy(SemiCircle(config["radius"]).sample(shape)).to(dtype)
+        elif mode[0] == "custom":
+            mag = torch.sqrt(config["diagonal"])
         else:
             raise ValueError(f"Unsupported magnitude: {mode[0]}")
 

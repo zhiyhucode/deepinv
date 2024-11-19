@@ -148,7 +148,7 @@ def spectral_methods(
     y: torch.Tensor,
     physics,
     x=None,
-    n_iter=50,
+    n_iter=1000,
     preprocessing=default_preprocessing,
     lamb=10.0,
     x_true=None,
@@ -156,6 +156,7 @@ def spectral_methods(
     log_metric=cosine_similarity,
     early_stop: bool = True,
     rtol: float = 1e-5,
+    verbose: bool = True,
 ):
     r"""
     Utility function for spectral methods.
@@ -200,7 +201,8 @@ def spectral_methods(
             metrics.append(log_metric(x_new, x_true))
         if early_stop:
             if torch.linalg.norm(x_new - x) / torch.linalg.norm(x) < rtol:
-                print(f"Power iteration early stopped at iteration {i}.")
+                if verbose:
+                    print(f"Power iteration early stopped at iteration {i}.")
                 break
         x = x_new
     #! change the norm of x so that it matches the norm of true x
