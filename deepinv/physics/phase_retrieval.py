@@ -16,6 +16,22 @@ from deepinv.physics.structured_random import (
 )
 from deepinv.optim.phase_retrieval import spectral_methods
 
+def dft_matrix(n, dtype=torch.cfloat, device="cpu"):
+    # given a dimension n, return the n x n DFT matrix
+    # normalize to have orthogonality
+    omega = np.exp(-2 * np.pi * 1j / n)
+    W = np.fromfunction(lambda i, j: omega ** (i * j), (n, n))
+    W = W / np.sqrt(n)
+    return W.astype(dtype).to(device)
+
+def dct_matrix(n, dtype=torch.cfloat, device="cpu"):
+    # given a dimension n, return the n x n DCT matrix
+    # normalize to have orthogonality
+    omega = np.exp(-2 * np.pi * 1j / (2 * n))
+    W = np.fromfunction(lambda i, j: omega ** (2 * i * j), (n, n))
+    W = W / np.sqrt(n)
+    return W.astype(dtype).to(device)
+
 
 class PhaseRetrieval(Physics):
     r"""
@@ -226,26 +242,29 @@ class StructuredRandomPhaseRetrieval(PhaseRetrieval):
         output_shape: tuple,
         n_layers: int,
         transform="fft",
-        diagonal_mode="uniform_phase",  # lower index is closer to the input
+        diagonal_mode:list=[['marchenko','uniform']],  # lower index is closer to the input
         distri_config: dict = None,
+        pad_powers_of_two=False,
         shared_weights=False,
         dtype=torch.complex64,
         device="cpu",
         **kwargs,
     ):
-        if output_shape is None:
-            output_shape = input_shape
-
         self.input_shape = input_shape
         self.output_shape = output_shape
+        
+        self.mode = compare(input_shape, output_shape)
 
         if transform == "hadamard":
-            padded_length = 2 ** math.ceil(
-                math.log2(max(input_shape[1], output_shape[1]))
-            )
-            self.middle_shape = (1, padded_length, padded_length)
+            pad_powers_of_two = True
+
+        if pad_powers_of_two:
+            middle_size = 2 ** math.ceil(math.log2(max(input_shape[1], output_shape[1])))
+            self.middle_shape = (1, middle_size, middle_size) 
+        elif self.mode == "oversampling":
+            self.middle_shape = self.output_shape
         else:
-            self.middle_shape = None
+            self.middle_shape = self.input_shape 
 
         self.n = torch.prod(torch.tensor(self.input_shape))
         self.m = torch.prod(torch.tensor(self.output_shape))
@@ -256,6 +275,7 @@ class StructuredRandomPhaseRetrieval(PhaseRetrieval):
         self.n_layers = n_layers
         self.structure = self.get_structure(self.n_layers)
         self.shared_weights = shared_weights
+        self.transform = transform
 
         self.distri_config = distri_config
         self.distri_config["m"] = self.m
@@ -263,8 +283,6 @@ class StructuredRandomPhaseRetrieval(PhaseRetrieval):
 
         self.dtype = dtype
         self.device = device
-
-        self.mode = compare(input_shape, output_shape)
 
         # generate diagonal matrices
         self.diagonals = []
@@ -274,33 +292,6 @@ class StructuredRandomPhaseRetrieval(PhaseRetrieval):
 
         if not shared_weights:
             for i in range(math.floor(self.n_layers)):
-                if transform == "hadamard":
-                    diagonal = generate_diagonal(
-                        self.middle_shape,
-                        mode=diagonal_mode[i],
-                        dtype=self.dtype,
-                        device=self.device,
-                        config=self.distri_config,
-                    )
-                elif self.mode == "oversampling":
-                    diagonal = generate_diagonal(
-                        self.output_shape,
-                        mode=diagonal_mode[i],
-                        dtype=self.dtype,
-                        device=self.device,
-                        config=self.distri_config,
-                    )
-                else:
-                    diagonal = generate_diagonal(
-                        self.input_shape,
-                        mode=diagonal_mode[i],
-                        dtype=self.dtype,
-                        device=self.device,
-                        config=self.distri_config,
-                    )
-                self.diagonals.append(diagonal)
-        else:
-            if transform == "hadamard":
                 diagonal = generate_diagonal(
                     self.middle_shape,
                     mode=diagonal_mode[i],
@@ -308,22 +299,15 @@ class StructuredRandomPhaseRetrieval(PhaseRetrieval):
                     device=self.device,
                     config=self.distri_config,
                 )
-            elif self.mode == "oversampling":
-                diagonal = generate_diagonal(
-                    self.output_shape,
-                    mode=diagonal_mode[i],
-                    dtype=self.dtype,
-                    device=self.device,
-                    config=self.distri_config,
-                )
-            else:
-                diagonal = generate_diagonal(
-                    self.input_shape,
-                    mode=diagonal_mode[i],
-                    dtype=self.dtype,
-                    device=self.device,
-                    config=self.distri_config,
-                )
+                self.diagonals.append(diagonal)
+        else:
+            diagonal = generate_diagonal(
+                self.middle_shape,
+                mode=diagonal_mode[0],
+                dtype=self.dtype,
+                device=self.device,
+                config=self.distri_config,
+            )
             self.diagonals = self.diagonals + [diagonal] * math.floor(self.n_layers)
 
         if transform == "fft":
@@ -372,3 +356,27 @@ class StructuredRandomPhaseRetrieval(PhaseRetrieval):
         :return: (str) the structure of the operator, e.g., "FDFD".
         """
         return "FD" * math.floor(n_layers) + "F" * (n_layers % 1 == 0.5)
+    
+    def forward_matrix(self) -> torch.Tensor:
+        r"""Returns the forward matrix of the operator.
+
+        :return: (torch.Tensor) the forward matrix.
+        """
+
+        assert self.m >= self.n, "currently only supports oversampling"
+
+        forward_matrix = torch.eye(n=self.m, m=self.n, dtype=self.dtype, device=self.device)
+        
+        if self.transform == "fft":
+            transform_matrix = dft_matrix(self.m, dtype=self.dtype, device=self.device)
+        elif self.transform == "dct":
+            transform_matrix = dct_matrix(self.m, dtype=self.dtype, device=self.device)
+
+        if self.n_layers % 1 == 0.5:
+            forward_matrix = transform_matrix @ forward_matrix
+        
+        for diagonal in self.diagonals:
+            forward_matrix = torch.diag(diagonal.flatten()) @ forward_matrix
+            forward_matrix = transform_matrix @ forward_matrix
+        
+        return forward_matrix

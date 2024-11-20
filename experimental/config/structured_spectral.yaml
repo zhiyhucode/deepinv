@@ -21,6 +21,7 @@ model:
       #radius: 0.8
   transform: "fft" # 'fft', 'dct', 'hadamard'
   shared_weights: False
+  pad_powers_of_two: False
 
 recon:
   series: "arange"

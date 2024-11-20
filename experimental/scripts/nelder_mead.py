@@ -118,7 +118,7 @@ def main():
         bin_edges=bin_edges,
         input_shape=input_shape,
         output_shape=output_shape,
-        n_repeats=10,
+        n_repeats=25,
         device=device,
     )
 

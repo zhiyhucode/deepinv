@@ -8,7 +8,6 @@ import torch
 
 from deepinv.physics.forward import LinearPhysics
 
-
 class Distribution(ABC):
     def __init__(self):
         self.max_pdf = None
@@ -141,15 +140,14 @@ def padding(tensor: torch.Tensor, input_shape: tuple, output_shape: tuple):
 
     :return: (torch.Tensor) the zero-padded tensor.
     """
-    assert (
-        tensor.shape[1:] == input_shape
-    ), f"tensor doesn't have the correct shape {tensor.shape[1:]} != {input_shape}"
-    change_top = math.ceil(abs(input_shape[1] - output_shape[1]) / 2)
-    change_bottom = math.floor(abs(input_shape[1] - output_shape[1]) / 2)
-    change_left = math.ceil(abs(input_shape[2] - output_shape[2]) / 2)
-    change_right = math.floor(abs(input_shape[2] - output_shape[2]) / 2)
-    assert change_top + change_bottom == abs(input_shape[1] - output_shape[1])
-    assert change_left + change_right == abs(input_shape[2] - output_shape[2])
+    assert (tensor.shape[-3:] == input_shape), f"tensor doesn't have the correct shape {tensor.shape}, expected {input_shape}."
+    assert (input_shape[-1] <= output_shape[-1]) and (input_shape[-2] <= output_shape[-2]), f"Input shape {input_shape} should be smaller than output shape {output_shape} for padding."
+
+    change_top = math.ceil(abs(input_shape[-2] - output_shape[-2]) / 2)
+    change_bottom = math.floor(abs(input_shape[-2] - output_shape[-2]) / 2)
+    change_left = math.ceil(abs(input_shape[-1] - output_shape[-1]) / 2)
+    change_right = math.floor(abs(input_shape[-1] - output_shape[-1]) / 2)
+
     return torch.nn.ZeroPad2d((change_left, change_right, change_top, change_bottom))(
         tensor
     )
@@ -165,15 +163,14 @@ def trimming(tensor: torch.Tensor, input_shape: tuple, output_shape: tuple):
 
     :return: (torch.Tensor) the trimmed tensor.
     """
-    assert (
-        tensor.shape[1:] == input_shape
-    ), f"tensor doesn't have the correct shape {tensor.shape[1:]} != {input_shape}"
-    change_top = math.ceil(abs(input_shape[1] - output_shape[1]) / 2)
-    change_bottom = math.floor(abs(input_shape[1] - output_shape[1]) / 2)
-    change_left = math.ceil(abs(input_shape[2] - output_shape[2]) / 2)
-    change_right = math.floor(abs(input_shape[2] - output_shape[2]) / 2)
-    assert change_top + change_bottom == abs(input_shape[1] - output_shape[1])
-    assert change_left + change_right == abs(input_shape[2] - output_shape[2])
+    assert (tensor.shape[-3:] == input_shape), f"tensor doesn't have the correct shape {tensor.shape}, expected {input_shape}."
+    assert (input_shape[-1] >= output_shape[-1]) and (input_shape[-2] >= output_shape[-2]), f"Input shape {input_shape} should be larger than output shape {output_shape} for trimming."
+
+    change_top = math.ceil(abs(input_shape[-2] - output_shape[-2]) / 2)
+    change_bottom = math.floor(abs(input_shape[-2] - output_shape[-2]) / 2)
+    change_left = math.ceil(abs(input_shape[-1] - output_shape[-1]) / 2)
+    change_right = math.floor(abs(input_shape[-1] - output_shape[-1]) / 2)
+
     if change_bottom == 0:
         tensor = tensor[..., change_top:, :]
     else:
@@ -375,11 +372,7 @@ class StructuredRandom(LinearPhysics):
         **kwargs,
     ):
 
-        if len(input_shape) == 3:
-            mode = compare(input_shape, output_shape)
-        else:
-            mode = None
-
+        # default settings for fast compressed sensing
         if diagonals is None:
             diagonals = [
                 generate_diagonal(
@@ -390,17 +383,16 @@ class StructuredRandom(LinearPhysics):
                     device=device,
                 )
             ]
-
+        
+        # forward operator
         def A(x):
 
             assert (
                 x.shape[1:] == input_shape
             ), f"x doesn't have the correct shape {x.shape[1:]} != {input_shape}"
 
-            if transform_func == hadamard2:
+            if len(input_shape) == 3:
                 x = padding(x, input_shape, middle_shape)
-            elif mode == "oversampling":
-                x = padding(x, input_shape, output_shape)
 
             if n_layers - math.floor(n_layers) == 0.5:
                 x = transform_func(x)
@@ -409,10 +401,8 @@ class StructuredRandom(LinearPhysics):
                 x = diagonal * x
                 x = transform_func(x)
 
-            if transform_func == hadamard2:
+            if len(input_shape) == 3:
                 x = trimming(x, middle_shape, output_shape)
-            elif mode == "undersampling":
-                x = trimming(x, input_shape, output_shape)
 
             return x
 
@@ -422,10 +412,8 @@ class StructuredRandom(LinearPhysics):
                 y.shape[1:] == output_shape
             ), f"y doesn't have the correct shape {y.shape[1:]} != {output_shape}"
 
-            if transform_func == hadamard2:
+            if len(input_shape) == 3:
                 y = padding(y, output_shape, middle_shape)
-            elif mode == "undersampling":
-                y = padding(y, output_shape, input_shape)
 
             for i in range(math.floor(n_layers)):
                 diagonal = diagonals[-i - 1]
@@ -434,10 +422,8 @@ class StructuredRandom(LinearPhysics):
             if n_layers - math.floor(n_layers) == 0.5:
                 y = transform_func_inv(y)
 
-            if transform_func == hadamard2:
+            if len(input_shape) == 3:
                 y = trimming(y, middle_shape, input_shape)
-            elif mode == "oversampling":
-                y = trimming(y, output_shape, input_shape)
 
             return y
 
