@@ -38,6 +38,8 @@ structure = StructuredRandomPhaseRetrieval.get_structure(n_layers)
 transform = config["model"]["transform"]
 diagonal_mode = config["model"]["diagonal"]["mode"]
 distri_config = config["model"]["diagonal"]["config"]
+if distri_config is None:
+    distri_config = {}
 shared_weights = config["model"]["shared_weights"]
 
 # recon
@@ -86,7 +88,7 @@ device = dinv.utils.get_freer_gpu() if torch.cuda.is_available() else "cpu"
 x = generate_signal(
     img_size=img_size,
     mode=config["signal"]["mode"],
-    config=config["signal"]["config"],
+    unit_mag=config["signal"]["unit_mag"],
     dtype=torch.complex64,
     device=device,
 )

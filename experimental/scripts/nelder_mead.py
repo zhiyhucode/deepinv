@@ -51,13 +51,9 @@ def sample_diagonal(hist, bin_edges, shape):
     return samples.reshape(shape)
 
 
-def loss(x,
-         bin_edges,
-         input_shape,
-         output_shape,
-         n_repeats=10,
-         device="cpu",
-         verbose=False):
+def loss(
+    x, bin_edges, input_shape, output_shape, n_repeats=10, device="cpu", verbose=False
+):
     # given a decision x representing the histogram, sample from the distribution and compute the loss as average cosine similarity obstained by spectral methods
     score = 0
 

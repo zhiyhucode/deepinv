@@ -8,6 +8,7 @@ import torch
 
 from deepinv.physics.forward import LinearPhysics
 
+
 class Distribution(ABC):
     def __init__(self):
         self.max_pdf = None
@@ -140,8 +141,12 @@ def padding(tensor: torch.Tensor, input_shape: tuple, output_shape: tuple):
 
     :return: (torch.Tensor) the zero-padded tensor.
     """
-    assert (tensor.shape[-3:] == input_shape), f"tensor doesn't have the correct shape {tensor.shape}, expected {input_shape}."
-    assert (input_shape[-1] <= output_shape[-1]) and (input_shape[-2] <= output_shape[-2]), f"Input shape {input_shape} should be smaller than output shape {output_shape} for padding."
+    assert (
+        tensor.shape[-3:] == input_shape
+    ), f"tensor doesn't have the correct shape {tensor.shape}, expected {input_shape}."
+    assert (input_shape[-1] <= output_shape[-1]) and (
+        input_shape[-2] <= output_shape[-2]
+    ), f"Input shape {input_shape} should be smaller than output shape {output_shape} for padding."
 
     change_top = math.ceil(abs(input_shape[-2] - output_shape[-2]) / 2)
     change_bottom = math.floor(abs(input_shape[-2] - output_shape[-2]) / 2)
@@ -163,8 +168,12 @@ def trimming(tensor: torch.Tensor, input_shape: tuple, output_shape: tuple):
 
     :return: (torch.Tensor) the trimmed tensor.
     """
-    assert (tensor.shape[-3:] == input_shape), f"tensor doesn't have the correct shape {tensor.shape}, expected {input_shape}."
-    assert (input_shape[-1] >= output_shape[-1]) and (input_shape[-2] >= output_shape[-2]), f"Input shape {input_shape} should be larger than output shape {output_shape} for trimming."
+    assert (
+        tensor.shape[-3:] == input_shape
+    ), f"tensor doesn't have the correct shape {tensor.shape}, expected {input_shape}."
+    assert (input_shape[-1] >= output_shape[-1]) and (
+        input_shape[-2] >= output_shape[-2]
+    ), f"Input shape {input_shape} should be larger than output shape {output_shape} for trimming."
 
     change_top = math.ceil(abs(input_shape[-2] - output_shape[-2]) / 2)
     change_bottom = math.floor(abs(input_shape[-2] - output_shape[-2]) / 2)
@@ -383,7 +392,7 @@ class StructuredRandom(LinearPhysics):
                     device=device,
                 )
             ]
-        
+
         # forward operator
         def A(x):
 

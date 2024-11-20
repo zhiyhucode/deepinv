@@ -30,6 +30,8 @@ def generate_signal(
     transform=None,
     unit_mag=True,
     max_scale=None,
+    constant=None,
+    noise_ratio=None,
     dtype=torch.complex64,
     device="cpu",
 ):
@@ -49,9 +51,7 @@ def generate_signal(
         img = torch.zeros((1, 1, img_size, img_size), device=device)
         img[0, 0, img_size // 2, img_size // 2] = 1.0
     elif mode == "constant":
-        img == config["constant"] * torch.ones(
-            (1, 1, img_size, img_size), device=device
-        )
+        img == constant * torch.ones((1, 1, img_size, img_size), device=device)
     elif mode == "polar":
         # Create a tensor of probabilities (0.5 for each element)
         probabilities = torch.full((1, 1, img_size, img_size), 0.5)
@@ -65,10 +65,7 @@ def generate_signal(
         elif transform == "permute":
             img = permute(img)
         elif transform == "noise":
-            img = (
-                img * (1 - config["noise_ratio"])
-                + torch.rand_like(img) * config["noise_ratio"]
-            )
+            img = img * (1 - noise_ratio) + torch.rand_like(img) * noise_ratio
         else:
             raise ValueError("Invalid transform.")
     # generate phase signal

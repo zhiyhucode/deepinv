@@ -16,6 +16,7 @@ from deepinv.physics.structured_random import (
 )
 from deepinv.optim.phase_retrieval import spectral_methods
 
+
 def dft_matrix(n, dtype=torch.cfloat, device="cpu"):
     # given a dimension n, return the n x n DFT matrix
     # normalize to have orthogonality
@@ -23,6 +24,7 @@ def dft_matrix(n, dtype=torch.cfloat, device="cpu"):
     W = np.fromfunction(lambda i, j: omega ** (i * j), (n, n))
     W = W / np.sqrt(n)
     return W.astype(dtype).to(device)
+
 
 def dct_matrix(n, dtype=torch.cfloat, device="cpu"):
     # given a dimension n, return the n x n DCT matrix
@@ -242,7 +244,9 @@ class StructuredRandomPhaseRetrieval(PhaseRetrieval):
         output_shape: tuple,
         n_layers: int,
         transform="fft",
-        diagonal_mode:list=[['marchenko','uniform']],  # lower index is closer to the input
+        diagonal_mode: list = [
+            ["marchenko", "uniform"]
+        ],  # lower index is closer to the input
         distri_config: dict = dict(),
         pad_powers_of_two=False,
         shared_weights=False,
@@ -252,19 +256,21 @@ class StructuredRandomPhaseRetrieval(PhaseRetrieval):
     ):
         self.input_shape = input_shape
         self.output_shape = output_shape
-        
+
         self.mode = compare(input_shape, output_shape)
 
         if transform == "hadamard":
             pad_powers_of_two = True
 
         if pad_powers_of_two:
-            middle_size = 2 ** math.ceil(math.log2(max(input_shape[1], output_shape[1])))
-            self.middle_shape = (1, middle_size, middle_size) 
+            middle_size = 2 ** math.ceil(
+                math.log2(max(input_shape[1], output_shape[1]))
+            )
+            self.middle_shape = (1, middle_size, middle_size)
         elif self.mode == "oversampling":
             self.middle_shape = self.output_shape
         else:
-            self.middle_shape = self.input_shape 
+            self.middle_shape = self.input_shape
 
         self.n = torch.prod(torch.tensor(self.input_shape))
         self.m = torch.prod(torch.tensor(self.output_shape))
@@ -356,7 +362,7 @@ class StructuredRandomPhaseRetrieval(PhaseRetrieval):
         :return: (str) the structure of the operator, e.g., "FDFD".
         """
         return "FD" * math.floor(n_layers) + "F" * (n_layers % 1 == 0.5)
-    
+
     def forward_matrix(self) -> torch.Tensor:
         r"""Returns the forward matrix of the operator.
 
@@ -365,8 +371,10 @@ class StructuredRandomPhaseRetrieval(PhaseRetrieval):
 
         assert self.m >= self.n, "currently only supports oversampling"
 
-        forward_matrix = torch.eye(n=self.m, m=self.n, dtype=self.dtype, device=self.device)
-        
+        forward_matrix = torch.eye(
+            n=self.m, m=self.n, dtype=self.dtype, device=self.device
+        )
+
         if self.transform == "fft":
             transform_matrix = dft_matrix(self.m, dtype=self.dtype, device=self.device)
         elif self.transform == "dct":
@@ -374,9 +382,9 @@ class StructuredRandomPhaseRetrieval(PhaseRetrieval):
 
         if self.n_layers % 1 == 0.5:
             forward_matrix = transform_matrix @ forward_matrix
-        
+
         for diagonal in self.diagonals:
             forward_matrix = torch.diag(diagonal.flatten()) @ forward_matrix
             forward_matrix = transform_matrix @ forward_matrix
-        
+
         return forward_matrix
