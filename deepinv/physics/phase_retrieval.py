@@ -243,7 +243,7 @@ class StructuredRandomPhaseRetrieval(PhaseRetrieval):
         n_layers: int,
         transform="fft",
         diagonal_mode:list=[['marchenko','uniform']],  # lower index is closer to the input
-        distri_config: dict = None,
+        distri_config: dict = dict(),
         pad_powers_of_two=False,
         shared_weights=False,
         dtype=torch.complex64,

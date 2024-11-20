@@ -28,7 +28,8 @@ def generate_signal(
     img_size,
     mode,
     transform=None,
-    config: dict = None,
+    unit_mag=True,
+    max_scale=None,
     dtype=torch.complex64,
     device="cpu",
 ):
@@ -73,12 +74,12 @@ def generate_signal(
     # generate phase signal
     # the phase is computed as pi*x - 0.5pi, where x is the original image.
     x = torch.exp(1j * img * torch.pi - 0.5j * torch.pi).to(device)
-    if config["unit_mag"] is True:
+    if unit_mag is True:
         assert torch.allclose(
             x.abs(), torch.tensor(1.0)
         ), "The magnitudes of the signal are not all 1s."
     else:
-        scale = config["max_scale"] * torch.rand_like(x, dtype=torch.float)
+        scale = max_scale * torch.rand_like(x, dtype=torch.float)
         x = x * scale
     return x
 

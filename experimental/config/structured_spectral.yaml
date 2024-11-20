@@ -6,22 +6,20 @@ general:
 signal:
   img_size: 64
   mode: "shepp-logan"
-  config:
-    noise_ratio: 0.0 # noise ratio for mix mode
-    unit_mag: True
-    max_scale: 40.0 # max scale for varying magnitude
+  noise_ratio: 0.0 # noise ratio for mix mode
+  unit_mag: True
+  max_scale: None # max scale for varying magnitude
 
 model:
   n_layers: 2
   diagonal:
     mode: [['unit','uniform'],['marchenko','uniform']] # mag: 'unit', 'marchenko', phase: 'uniform', 'laplace', 'quadrant'
     config:
-      placeholder: 0 # use when no config
       #degree_of_freedom: 30
       #radius: 0.8
   transform: "fft" # 'fft', 'dct', 'hadamard'
-  shared_weights: False
   pad_powers_of_two: False
+  shared_weights: False
 
 recon:
   series: "arange"
