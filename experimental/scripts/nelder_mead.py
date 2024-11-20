@@ -51,7 +51,13 @@ def sample_diagonal(hist, bin_edges, shape):
     return samples.reshape(shape)
 
 
-def loss(x, bin_edges, input_shape, output_shape, n_repeats=10, device="cpu"):
+def loss(x,
+         bin_edges,
+         input_shape,
+         output_shape,
+         n_repeats=10,
+         device="cpu",
+         verbose=False):
     # given a decision x representing the histogram, sample from the distribution and compute the loss as average cosine similarity obstained by spectral methods
     score = 0
 
@@ -75,11 +81,12 @@ def loss(x, bin_edges, input_shape, output_shape, n_repeats=10, device="cpu"):
             device=device,
         )
         y = physics(img)
-        x_spec = spectral_methods(y, physics, verbose=False)
+        x_spec = spectral_methods(y, physics, verbose=verbose)
         score += cosine_similarity(x_spec, img)
 
     # score larger better
-    print("current average cosine similarity:", (score / n_repeats).item())
+    if verbose:
+        print("current average cosine similarity:", (score / n_repeats).item())
     return (-score / n_repeats).item()
 
 
@@ -98,7 +105,13 @@ def main():
         n_samples=100000,
     )
 
-    samples = sample_diagonal(hist, bin_edges, shape=output_shape)
+    # resume last run if possible
+    try:
+        x0 = np.load("x_history.npy")[-1]
+        print("resuming from last run")
+    except:
+        x0 = hist
+        print("starting from scratch")
 
     loss_func = partial(
         loss,
@@ -117,12 +130,13 @@ def main():
     def callback(xk):
         x_history.append(np.copy(xk))  # Copy to avoid referencing the same array
         loss_history.append(loss_func(xk))
+        print("current loss:", loss_history[-1])
 
     solution = sp.optimize.minimize(
         fun=loss_func,
-        x0=hist,
+        x0=x0,
         method="Nelder-Mead",
-        options={"maxiter": 1500},
+        options={"maxiter": 10000},
         callback=callback,
     )
 
