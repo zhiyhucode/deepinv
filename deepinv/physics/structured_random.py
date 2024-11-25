@@ -74,16 +74,19 @@ class MarchenkoPastur(Distribution):
             2 * np.pi * self.sigma**2 * self.gamma * x
         )
 
-    def sample(self, shape: tuple[int, ...]) -> np.ndarray:
+    def sample(self, shape: tuple[int, ...], include_zero=False) -> np.ndarray:
         """using acceptance-rejection sampling if oversampling ratio is more than 1, otherwise using the eigenvalues sampled from a real matrix"""
         if self.m < self.n:
             # there will be n - m zero eigenvalues, the rest nonzero eigenvalues follow the Marchenko-Pastur distribution
-            n_zeros = int(np.product(shape) / self.n * (self.n - self.m))
-            nonzeros = super().sample((np.product(shape) - n_zeros,))
-            zeros = np.zeros(n_zeros)
-            return np.random.permutation(np.concatenate((nonzeros, zeros))).reshape(
-                shape
-            )
+            if include_zero is True:
+                n_zeros = int(np.product(shape) / self.n * (self.n - self.m))
+                nonzeros = super().sample((np.product(shape) - n_zeros,))
+                zeros = np.zeros(n_zeros)
+                return np.random.permutation(np.concatenate((nonzeros, zeros))).reshape(
+                    shape
+                )
+            else:
+                return super().sample(shape)
         elif self.m == self.n:
             # compute the eigenvalues from a real matrix and use it as the samples
             X = 1 / np.sqrt(self.m) * torch.randn((self.m, self.n), dtype=torch.cfloat)
@@ -280,6 +283,23 @@ def generate_diagonal(
 
     return diag.to(device)
 
+def generate_spectrum(
+    shape: tuple[int, ...],
+    mode: str,
+    config: dict = None,
+    dtype=torch.complex64,
+    device="cpu",
+    generator=torch.Generator("cpu"),
+):
+    if mode == "unifrom":
+        spectrum = torch.ones(shape, dtype=dtype)
+    elif mode == "marchenko":
+        spectrum = torch.from_numpy(MarchenkoPastur(config["m"], config["n"]).sample(shape)).to(dtype)
+        spectrum = torch.sqrt(spectrum)
+    else:
+        raise ValueError(f"Unsupported mode: {mode}")
+    
+    return spectrum.to(device)
 
 def dst1(x):
     r"""
@@ -369,6 +389,7 @@ class StructuredRandom(LinearPhysics):
 
     def __init__(
         self,
+        mode: str,
         input_shape: tuple,
         output_shape: tuple,
         middle_shape: tuple = None,
@@ -376,6 +397,7 @@ class StructuredRandom(LinearPhysics):
         transform_func=dst1,
         transform_func_inv=dst1,
         diagonals=None,
+        spectrum=None,
         device="cpu",
         rng: torch.Generator = None,
         **kwargs,
@@ -392,6 +414,15 @@ class StructuredRandom(LinearPhysics):
                     device=device,
                 )
             ]
+        
+        if spectrum is None:
+            spectrum = generate_spectrum(
+                shape=input_shape,
+                mode="uniform",
+                dtype=torch.float,
+                generator=rng,
+                device=device,
+            )
 
         # forward operator
         def A(x):
@@ -399,6 +430,9 @@ class StructuredRandom(LinearPhysics):
             assert (
                 x.shape[1:] == input_shape
             ), f"x doesn't have the correct shape {x.shape[1:]} != {input_shape}"
+
+            if mode == "oversampling" or mode == "equisampling":
+                x = x * spectrum
 
             if len(input_shape) == 3:
                 x = padding(x, input_shape, middle_shape)
@@ -412,6 +446,9 @@ class StructuredRandom(LinearPhysics):
 
             if len(input_shape) == 3:
                 x = trimming(x, middle_shape, output_shape)
+            
+            if mode == "undersampling":
+                x = x * spectrum
 
             return x
 
@@ -420,6 +457,9 @@ class StructuredRandom(LinearPhysics):
             assert (
                 y.shape[1:] == output_shape
             ), f"y doesn't have the correct shape {y.shape[1:]} != {output_shape}"
+
+            if mode == "undersampling":
+                y = y * torch.conj(spectrum)
 
             if len(input_shape) == 3:
                 y = padding(y, output_shape, middle_shape)
@@ -433,6 +473,9 @@ class StructuredRandom(LinearPhysics):
 
             if len(input_shape) == 3:
                 y = trimming(y, middle_shape, input_shape)
+            
+            if mode == "oversampling" or mode == "equisampling":
+                y = y * torch.conj(spectrum) 
 
             return y
 

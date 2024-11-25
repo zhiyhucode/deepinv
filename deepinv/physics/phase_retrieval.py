@@ -9,6 +9,7 @@ from deepinv.physics.forward import Physics, LinearPhysics
 from deepinv.physics.structured_random import (
     compare,
     generate_diagonal,
+    generate_spectrum,
     dct2,
     idct2,
     hadamard2,
@@ -248,6 +249,7 @@ class StructuredRandomPhaseRetrieval(PhaseRetrieval):
             ["marchenko", "uniform"]
         ],  # lower index is closer to the input
         distri_config: dict = dict(),
+        spectrum: str = "uniform",
         pad_powers_of_two=False,
         shared_weights=False,
         dtype=torch.complex64,
@@ -290,6 +292,17 @@ class StructuredRandomPhaseRetrieval(PhaseRetrieval):
         self.dtype = dtype
         self.device = device
 
+        if self.mode == "undersampling":
+            spectrum_shape = self.output_shape
+        else:
+            spectrum_shape = self.input_shape
+        self.spectrum = generate_spectrum(shape=spectrum_shape,
+                                          mode=spectrum,
+                                          config=self.distri_config,
+                                          dtype=self.dtype,
+                                          device=self.device,
+                                          generator=torch.Generator(device=device))
+
         # generate diagonal matrices
         self.diagonals = []
 
@@ -329,6 +342,8 @@ class StructuredRandomPhaseRetrieval(PhaseRetrieval):
             raise ValueError(f"Unimplemented transform: {transform}")
 
         B = StructuredRandom(
+            mode=self.mode,
+            spectrum=self.spectrum,
             input_shape=self.input_shape,
             output_shape=self.output_shape,
             middle_shape=self.middle_shape,
