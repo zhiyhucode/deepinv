@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 import math
 
-from hadamard_transform import hadamard_transform
+from fast_hadamard_transform import hadamard_transform
 import numpy as np
 from scipy.fft import dct, idct
 import torch
@@ -351,22 +351,35 @@ def hadamard2(x):
     assert x.dim() == 4, "Input tensor must have shape (N, C, H, W)"
     n, c, h, w = x.shape
 
-    def hadamard_single_channel(x):
-        assert x.dim() == 2, "Input tensor must have shape (H, W)"
-        transformed_rows = torch.stack([hadamard_transform(row) for row in x], dim=0)
-        transformed_columns = torch.stack(
-            [hadamard_transform(col) for col in transformed_rows.transpose(0, 1)], dim=0
-        )
-        return transformed_columns.transpose(0, 1)
+    # def hadamard1(x):
+    #     assert x.dim() == 1, "Input tensor must have shape (N,)"
+    #     return hadamard_transform(x.real, scale=1/np.sqrt(x.shape[0])) + 1j * hadamard_transform(x.imag, scale=1/np.sqrt(x.shape[0]))
 
-    transformed_tensor = torch.stack(
-        [
-            torch.stack([hadamard_single_channel(x[i, j]) for j in range(c)], dim=0)
-            for i in range(n)
-        ],
-        dim=0,
-    )
-    return transformed_tensor
+    # def hadamard_single_channel(x):
+    #     assert x.dim() == 2, "Input tensor must have shape (H, W)"
+    #     transformed_rows = torch.stack([hadamard1(row) for row in x], dim=0)
+    #     transformed_columns = torch.stack(
+    #         [hadamard1(col) for col in transformed_rows.T], dim=0
+    #     )
+    #     return transformed_columns.T
+
+    # x = torch.stack(
+    #     [
+    #         torch.stack([hadamard_single_channel(x[i, j]) for j in range(c)], dim=0)
+    #         for i in range(n)
+    #     ],
+    #     dim=0,
+    # )
+    x = x.flatten()
+    real = x.real
+    imag = x.imag
+    real = hadamard_transform(real, scale=1 / np.sqrt(x.shape[0]))
+    imag = hadamard_transform(imag, scale=1 / np.sqrt(x.shape[0]))
+
+    x = real + 1j * imag
+    x = torch.reshape(x, (n, c, h, w))
+
+    return x
 
 
 class StructuredRandom(LinearPhysics):
