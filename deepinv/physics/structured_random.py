@@ -255,6 +255,8 @@ def generate_diagonal(
             mag = torch.from_numpy(SemiCircle(config["radius"]).sample(shape)).to(dtype)
         elif mode[0] == "custom":
             mag = torch.sqrt(config["diagonal"])
+        elif mode[0] == "cauchy":
+            mag = torch.distributions.cauchy.Cauchy(0, 1).sample(shape).to(dtype)
         else:
             raise ValueError(f"Unsupported magnitude: {mode[0]}")
 
@@ -291,7 +293,7 @@ def generate_spectrum(
     device="cpu",
     generator=torch.Generator("cpu"),
 ):
-    if mode == "unifrom":
+    if mode == "unit":
         spectrum = torch.ones(shape, dtype=dtype)
     elif mode == "marchenko":
         spectrum = torch.from_numpy(MarchenkoPastur(config["m"], config["n"]).sample(shape)).to(dtype)

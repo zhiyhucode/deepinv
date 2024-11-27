@@ -303,10 +303,10 @@ def plot_error_bars(
             min_vals = avg_vals - std_vals
             max_vals = avg_vals + std_vals
         elif type(data) == pd.DataFrame:
-            if plot == "reconstruction" or plot == "layer":
-                for column in data.columns:
-                    if "repeat" not in column:
-                        data.drop(columns=column, inplace=True)
+            #if plot == "reconstruction" or plot == "layer":
+            for column in data.columns:
+                if "repeat" not in column:
+                    data.drop(columns=column, inplace=True)
             if error_bar == "quantile":
                 min_vals = data.quantile(quantiles[0], axis=axis).values
                 avg_vals = data.quantile(quantiles[1], axis=axis).values

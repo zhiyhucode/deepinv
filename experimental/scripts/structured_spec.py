@@ -109,6 +109,8 @@ for i in trange(n_oversampling):
 
     if oversampling_ratio - last_oversampling_ratio < 0.05:
         continue
+    if oversampling_ratio > 0.99 and oversampling_ratio < 1.01: 
+        continue
 
     output_size = output_sizes[i]
     print(f"output_size: {output_size}")
