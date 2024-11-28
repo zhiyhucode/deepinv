@@ -1,10 +1,10 @@
 general:
-  name: "structured_hadamard_padded128"
+  name: "structured_fft_padded"
   recon: "spec"
   save: True
 
 signal:
-  shape: [1,1,128,128]
+  shape: [1,1,64,64]
   mode: ["unit","shepp-logan"]
   config:
 
@@ -17,7 +17,7 @@ model:
     config:
       #degree_of_freedom: 30
       #radius: 0.8
-  transform: "hadamard" # 'fft', 'dct', 'hadamard'
+  transform: "fft" # 'fft', 'dct', 'hadamard'
   pad_powers_of_two: True
   shared_weights: False
 
@@ -31,4 +31,4 @@ recon:
 
 save:
   path: "../runs"
-  name: "res_{model_name}_{structure}_{img_mode[0]}_{img_mode[1]}_{recon}.csv"
+  name: "res_{model_name}_{structure}_{img_mode}_{recon}.csv"
