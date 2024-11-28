@@ -1,13 +1,14 @@
 general:
   name: "structured_hadamard"
   recon: "spec"
-  save: False
+  save: True
 
 signal:
-  shape: [1,1,64,64]
-  mode: ["unit","shepp-logan"]
-  config:
-
+  img_size: 64
+  mode: "shepp-logan"
+  noise_ratio: 0.0 # noise ratio for mix mode
+  unit_mag: True
+  max_scale: None # max scale for varying magnitude
 
 model:
   spectrum: "unit"

@@ -31,8 +31,15 @@ model_name = config["general"]["name"]
 recon = config["general"]["recon"]
 save = config["general"]["save"]
 
+# signal
+shape = config["signal"]["shape"]
+mode = config["signal"]["mode"]
+signal_config = config["signal"]["config"]
+if signal_config is None:
+    signal_config = {}
+
 # model
-img_size = config["signal"]["img_size"]
+img_size = config["signal"]["shape"][-1]
 n_layers = config["model"]["n_layers"]
 structure = StructuredRandomPhaseRetrieval.get_structure(n_layers)
 transform = config["model"]["transform"]
@@ -46,7 +53,7 @@ spectrum = config["model"]["spectrum"]
 # recon
 n_repeats = config["recon"]["n_repeats"]
 max_iter = config["recon"]["max_iter"]
-
+## oversampling ratios
 if config["recon"]["series"] == "arange":
     start = config["recon"]["start"]
     end = config["recon"]["end"]
@@ -55,7 +62,6 @@ elif config["recon"]["series"] == "list":
     output_sizes = torch.tensor(config["recon"]["list"])
 else:
     raise ValueError("Invalid series type.")
-
 oversampling_ratios = output_sizes**2 / img_size**2
 n_oversampling = oversampling_ratios.shape[0]
 
@@ -87,9 +93,9 @@ device = dinv.utils.get_freer_gpu() if torch.cuda.is_available() else "cpu"
 
 # Set up the signal to be reconstructed.
 x = generate_signal(
-    img_size=img_size,
-    mode=config["signal"]["mode"],
-    unit_mag=config["signal"]["unit_mag"],
+    shape=shape,
+    mode=mode,
+    config=signal_config,
     dtype=torch.complex64,
     device=device,
 )

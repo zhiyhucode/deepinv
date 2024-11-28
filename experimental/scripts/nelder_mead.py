@@ -58,7 +58,7 @@ def loss(
     score = 0
 
     img = generate_signal(
-        img_size=input_shape[-1],
+        shape=input_shape[-1],
         mode="shepp-logan",
         transform=None,
         config={"unit_mag": True},

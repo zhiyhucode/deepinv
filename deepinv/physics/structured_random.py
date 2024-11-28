@@ -351,33 +351,21 @@ def hadamard2(x):
     assert x.dim() == 4, "Input tensor must have shape (N, C, H, W)"
     n, c, h, w = x.shape
 
-    # def hadamard1(x):
-    #     assert x.dim() == 1, "Input tensor must have shape (N,)"
-    #     return hadamard_transform(x.real, scale=1/np.sqrt(x.shape[0])) + 1j * hadamard_transform(x.imag, scale=1/np.sqrt(x.shape[0]))
-
-    # def hadamard_single_channel(x):
-    #     assert x.dim() == 2, "Input tensor must have shape (H, W)"
-    #     transformed_rows = torch.stack([hadamard1(row) for row in x], dim=0)
-    #     transformed_columns = torch.stack(
-    #         [hadamard1(col) for col in transformed_rows.T], dim=0
-    #     )
-    #     return transformed_columns.T
-
-    # x = torch.stack(
-    #     [
-    #         torch.stack([hadamard_single_channel(x[i, j]) for j in range(c)], dim=0)
-    #         for i in range(n)
-    #     ],
-    #     dim=0,
-    # )
-    x = x.flatten()
     real = x.real
     imag = x.imag
-    real = hadamard_transform(real, scale=1 / np.sqrt(x.shape[0]))
-    imag = hadamard_transform(imag, scale=1 / np.sqrt(x.shape[0]))
+    real = hadamard_transform(hadamard_transform(real, scale=1 / np.sqrt(w)).transpose(-2,-1), scale=1 / np.sqrt(h)).transpose(-2,-1)
+    imag = hadamard_transform(hadamard_transform(imag, scale=1 / np.sqrt(w)).transpose(-2,-1), scale=1 / np.sqrt(h)).transpose(-2,-1)
 
     x = real + 1j * imag
-    x = torch.reshape(x, (n, c, h, w))
+
+    # x = x.flatten()
+    # real = x.real
+    # imag = x.imag
+    # real = hadamard_transform(real, scale=1 / np.sqrt(x.shape[0]))
+    # imag = hadamard_transform(imag, scale=1 / np.sqrt(x.shape[0]))
+
+    # x = real + 1j * imag
+    # x = torch.reshape(x, (n, c, h, w))
 
     return x
 

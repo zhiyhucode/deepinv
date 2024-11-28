@@ -25,59 +25,64 @@ def permute(arr: torch.tensor) -> torch.tensor:
 
 
 def generate_signal(
-    img_size,
-    mode,
+    shape,
+    mode:tuple[str,str]=("unit","shepp-logan"),
     transform=None,
-    unit_mag=True,
-    max_scale=None,
-    constant=None,
-    noise_ratio=None,
+    config:dict=None,
+    phase_range = (-torch.pi, torch.pi),
     dtype=torch.complex64,
     device="cpu",
 ):
-    if mode == "shepp-logan":
+    assert len(mode) == 2, "The mode should be a tuple of two strings specifying the magnitude and phase information." 
+
+    if mode[0] == "unit":
+        mag = torch.ones(shape, device=device)
+    elif mode[0] == "random":
+        mag = config['max_scale'] * torch.rand(shape, device=device)
+    else:
+        raise ValueError("Invalid magnitude mode.")
+
+    if mode[1] == "shepp-logan":
         url = get_image_url("SheppLogan.png")
-        img = load_url_image(
+        phase = load_url_image(
             url=url,
-            img_size=img_size,
+            img_size=shape[-1],
             grayscale=True,
             resize_mode="resize",
             device=device,
         )
     elif mode == "random":
         # random phase signal
-        img = torch.rand((1, 1, img_size, img_size), device=device)
+        phase = torch.rand(shape, device=device)
     elif mode == "delta":
-        img = torch.zeros((1, 1, img_size, img_size), device=device)
-        img[0, 0, img_size // 2, img_size // 2] = 1.0
+        phase = torch.zeros(shape, device=device)
+        # randomly select one element of phase and set it to 1
+        idx = tuple(np.random.randint(0, s) for s in shape)
+        phase[idx] = 1
     elif mode == "constant":
-        img == constant * torch.ones((1, 1, img_size, img_size), device=device)
+        phase == config['constant'] * torch.ones((1, 1, shape, shape), device=device)
     elif mode == "polar":
         # Create a tensor of probabilities (0.5 for each element)
-        probabilities = torch.full((1, 1, img_size, img_size), 0.5)
+        probabilities = torch.full((1, 1, shape, shape), 0.5)
         # Generate a tensor with values 0 or 1, with a 50% chance for each
-        img = torch.bernoulli(probabilities)
+        phase = torch.bernoulli(probabilities)
     else:
         raise ValueError("Invalid mode.")
+
     if transform:
         if transform == "reverse":
-            img = 1 - img
+            phase = 1 - phase
         elif transform == "permute":
-            img = permute(img)
+            phase = permute(phase)
         elif transform == "noise":
-            img = img * (1 - noise_ratio) + torch.rand_like(img) * noise_ratio
+            phase = phase * (1 - config['noise_ratio']) + torch.rand_like(phase) * config['noise_ratio']
         else:
             raise ValueError("Invalid transform.")
+
     # generate phase signal
     # the phase is computed as pi*x - 0.5pi, where x is the original image.
-    x = torch.exp(1j * img * torch.pi - 0.5j * torch.pi).to(device)
-    if unit_mag is True:
-        assert torch.allclose(
-            x.abs(), torch.tensor(1.0)
-        ), "The magnitudes of the signal are not all 1s."
-    else:
-        scale = max_scale * torch.rand_like(x, dtype=torch.float)
-        x = x * scale
+    x = mag * torch.exp(1j * phase * (phase_range[1] - phase_range[0]) + 1j * phase_range[0]).to(dtype).to(device)
+
     return x
 
 
