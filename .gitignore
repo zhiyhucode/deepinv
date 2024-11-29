@@ -31,6 +31,8 @@
 /deepinv/datasets/reside/
 /datasets
 examples/*/datasets
+examples/*/results
+examples/*/ckpts
 deepinv/version.py
 /saved_models/
 venv
