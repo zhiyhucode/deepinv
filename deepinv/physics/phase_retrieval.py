@@ -296,12 +296,14 @@ class StructuredRandomPhaseRetrieval(PhaseRetrieval):
             spectrum_shape = self.output_shape
         else:
             spectrum_shape = self.input_shape
-        self.spectrum = generate_spectrum(shape=spectrum_shape,
-                                          mode=spectrum,
-                                          config=self.distri_config,
-                                          dtype=self.dtype,
-                                          device=self.device,
-                                          generator=torch.Generator(device=device))
+        self.spectrum = generate_spectrum(
+            shape=spectrum_shape,
+            mode=spectrum,
+            config=self.distri_config,
+            dtype=self.dtype,
+            device=self.device,
+            generator=torch.Generator(device=device),
+        )
 
         # generate diagonal matrices
         self.diagonals = []

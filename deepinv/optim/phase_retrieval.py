@@ -26,19 +26,21 @@ def permute(arr: torch.tensor) -> torch.tensor:
 
 def generate_signal(
     shape,
-    mode:tuple[str,str]=("unit","shepp-logan"),
+    mode: tuple[str, str] = ("unit", "shepp-logan"),
     transform=None,
-    config:dict=None,
-    phase_range = (-torch.pi, torch.pi),
+    config: dict = None,
+    phase_range=(-torch.pi, torch.pi),
     dtype=torch.complex64,
     device="cpu",
 ):
-    assert len(mode) == 2, "The mode should be a tuple of two strings specifying the magnitude and phase information." 
+    assert (
+        len(mode) == 2
+    ), "The mode should be a tuple of two strings specifying the magnitude and phase information."
 
     if mode[0] == "unit":
         mag = torch.ones(shape, device=device)
     elif mode[0] == "random":
-        mag = config['max_scale'] * torch.rand(shape, device=device)
+        mag = config["max_scale"] * torch.rand(shape, device=device)
     else:
         raise ValueError("Invalid magnitude mode.")
 
@@ -60,7 +62,7 @@ def generate_signal(
         idx = tuple(np.random.randint(0, s) for s in shape)
         phase[idx] = 1
     elif mode == "constant":
-        phase == config['constant'] * torch.ones((1, 1, shape, shape), device=device)
+        phase == config["constant"] * torch.ones((1, 1, shape, shape), device=device)
     elif mode == "polar":
         # Create a tensor of probabilities (0.5 for each element)
         probabilities = torch.full((1, 1, shape, shape), 0.5)
@@ -75,13 +77,18 @@ def generate_signal(
         elif transform == "permute":
             phase = permute(phase)
         elif transform == "noise":
-            phase = phase * (1 - config['noise_ratio']) + torch.rand_like(phase) * config['noise_ratio']
+            phase = (
+                phase * (1 - config["noise_ratio"])
+                + torch.rand_like(phase) * config["noise_ratio"]
+            )
         else:
             raise ValueError("Invalid transform.")
 
     # generate phase signal
     # the phase is computed as pi*x - 0.5pi, where x is the original image.
-    x = mag * torch.exp(1j * phase * (phase_range[1] - phase_range[0]) + 1j * phase_range[0]).to(dtype).to(device)
+    x = mag * torch.exp(
+        1j * phase * (phase_range[1] - phase_range[0]) + 1j * phase_range[0]
+    ).to(dtype).to(device)
 
     return x
 
@@ -308,7 +315,7 @@ def plot_error_bars(
             min_vals = avg_vals - std_vals
             max_vals = avg_vals + std_vals
         elif type(data) == pd.DataFrame:
-            #if plot == "reconstruction" or plot == "layer":
+            # if plot == "reconstruction" or plot == "layer":
             for column in data.columns:
                 if "repeat" not in column:
                     data.drop(columns=column, inplace=True)
