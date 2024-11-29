@@ -348,6 +348,7 @@ class StructuredRandomPhaseRetrieval(PhaseRetrieval):
             output_shape=self.output_shape,
             middle_shape=self.middle_shape,
             n_layers=self.n_layers,
+            transform=self.transform,
             transform_func=transform_func,
             transform_func_inv=transform_func_inv,
             diagonals=self.diagonals,
