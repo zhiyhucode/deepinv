@@ -27,11 +27,11 @@ class CompressedSensing(LinearPhysics):
     :math:`D\in\mathbb{R}^{n\times n}` is a fast orthogonal transform (DST-1) and
     :math:`\text{diag}(m)\in\mathbb{R}^{m\times n}` is random subsampling matrix, which keeps :math:`m` out of :math:`n` entries.
 
-    For image sizes bigger than 32 x 32, the forward computation can be prohibitively expensive due to its :math:`O(mn)` complexity. In this case, we recommend using :meth:`deepinv.physics.StructuredRandom` instead.
+    For image sizes bigger than 32 x 32, the forward computation can be prohibitively expensive due to its :math:`O(mn)` complexity.
+    In this case, we recommend using :class:`deepinv.physics.StructuredRandom` instead.
 
     .. deprecated:: 0.2.2
-
-                         The ``fast`` option is deprecated and might be removed in future versions.
+       The ``fast`` option is deprecated and might be removed in future versions. Use :class:`deepinv.physics.StructuredRandom` instead.
 
     An existing operator can be loaded from a saved .pth file via ``self.load_state_dict(save_path)``,
     in a similar fashion to :class:`torch.nn.Module`.
@@ -47,7 +47,7 @@ class CompressedSensing(LinearPhysics):
 
     .. math::
 
-        A_{i,j} \sim \mathcal{N} \left( 0, \frac{1}{2m}) \right) + \mathrm{i} \mathcal{N} \left( 0, \frac{1}{2m} \right).
+        A_{i,j} \sim \mathcal{N} \left( 0, \frac{1}{2m} \right) + \mathrm{i} \mathcal{N} \left( 0, \frac{1}{2m} \right).
 
     :param int m: number of measurements.
     :param tuple img_shape: shape (C, H, W) of inputs.

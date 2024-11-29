@@ -12,7 +12,6 @@
 
 # Files
 *.h5
-*.png
 *.pth
 *.ckpt
 *.tar.gz
@@ -26,7 +25,7 @@
 /docs/build/
 /docs/source/auto_examples/
 /docs/source/gen_modules/
-/docs/source/stubs/*
+/docs/source/**/stubs/*
 
 # Miscellaneous
 /deepinv/datasets/reside/

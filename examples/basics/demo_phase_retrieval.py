@@ -24,7 +24,11 @@ from deepinv.optim.prior import PnP, Zero
 from deepinv.optim.optimizers import optim_builder
 from deepinv.utils.demo import load_url_image, get_image_url
 from deepinv.utils.plotting import plot
-from deepinv.optim.phase_retrieval import correct_global_phase, cosine_similarity
+from deepinv.optim.phase_retrieval import (
+    correct_global_phase,
+    cosine_similarity,
+    spectral_methods,
+)
 from deepinv.models.complex import to_complex_denoiser
 
 BASE_DIR = Path(".")
@@ -76,14 +80,13 @@ assert torch.allclose(x_phase.real**2 + x_phase.imag**2, torch.tensor(1.0))
 oversampling_ratio = 1.2
 img_shape = x.shape[1:]
 m = int(oversampling_ratio * torch.prod(torch.tensor(img_shape)))
-noise_level_img = 0.03  # Gaussian Noise standard deviation for the degradation
 n_channels = 1  # 3 for color images, 1 for gray-scale images
 
 # Create the physics
 physics = dinv.physics.RandomPhaseRetrieval(
     m=m,
     img_shape=img_shape,
-    noise_model=dinv.physics.GaussianNoise(sigma=noise_level_img),
+    device=device,
 )
 
 # Generate measurements
@@ -116,7 +119,7 @@ for _ in range(num_iter):
         physics=physics,
     )
     x_phase_gd_rand = res["est"][0]
-    loss_hist.append(data_fidelity(x_phase_gd_rand, y, physics))
+    loss_hist.append(data_fidelity(x_phase_gd_rand, y, physics).cpu())
 
 print("initial loss:", loss_hist[0])
 print("final loss:", loss_hist[-1])
@@ -147,9 +150,7 @@ plot([x, x_gd_rand], titles=["Signal", "Reconstruction"], rescale_mode="clip")
 # Spectral methods :class:`deepinv.optim.phase_retrieval.spectral_methods` offers a good initial guess on the original signal. Moreover, :class:`deepinv.physics.RandomPhaseRetrieval` uses spectral methods as its default reconstruction method `A_dagger`, which we can directly call.
 
 # Spectral methods return a tensor with unit norm.
-x_phase_spec = physics.A_dagger(y, n_iter=4)
-# Correct the norm of the estimated signal
-x_phase_spec = x_phase_spec * torch.sqrt(y.sum())
+x_phase_spec = physics.A_dagger(y, n_iter=300)
 
 # %%
 # Phase correction and signal reconstruction
@@ -167,8 +168,7 @@ plot([x, x_spec], titles=["Signal", "Reconstruction"], rescale_mode="clip")
 # The estimate from spectral methods can be directly used as the initial guess for the gradient descent algorithm.
 
 # Initial guess from spectral methods
-x_phase_gd_spec = physics.A_dagger(y, n_iter=4)
-x_phase_gd_spec = x_phase_gd_spec * torch.sqrt(y.sum())
+x_phase_gd_spec = physics.A_dagger(y, n_iter=300)
 
 loss_hist = []
 for _ in range(num_iter):
@@ -181,7 +181,7 @@ for _ in range(num_iter):
         physics=physics,
     )
     x_phase_gd_spec = res["est"][0]
-    loss_hist.append(data_fidelity(x_phase_gd_spec, y, physics))
+    loss_hist.append(data_fidelity(x_phase_gd_spec, y, physics).cpu())
 
 print("intial loss:", loss_hist[0])
 print("final loss:", loss_hist[-1])
@@ -219,7 +219,7 @@ denoiser_complex = to_complex_denoiser(denoiser)
 # Algorithm parameters
 data_fidelity = L2()
 prior = PnP(denoiser=denoiser_complex)
-params_algo = {"stepsize": 0.10, "g_param": 0.05}
+params_algo = {"stepsize": 0.30, "g_param": 0.04}
 max_iter = 100
 early_stop = True
 verbose = True
@@ -268,14 +268,14 @@ plot(
 
 # Compute metrics
 print(
-    f"GD Random reconstruction, PSNR: {dinv.utils.metric.cal_psnr(x, x_gd_rand):.2f} dB; cosine similarity: {cosine_similarity(x_phase_gd_rand, x_phase):.3f}."
+    f"GD Random reconstruction, PSNR: {dinv.metric.cal_psnr(x, x_gd_rand).item():.2f} dB; cosine similarity: {cosine_similarity(x_phase_gd_rand, x_phase).item():.3f}."
 )
 print(
-    f"Spectral reconstruction, PSNR: {dinv.utils.metric.cal_psnr(x, x_spec):.2f} dB; cosine similarity: {cosine_similarity(x_phase_spec, x_phase):.3f}."
+    f"Spectral reconstruction, PSNR: {dinv.metric.cal_psnr(x, x_spec).item():.2f} dB; cosine similarity: {cosine_similarity(x_phase_spec, x_phase).item():.3f}."
 )
 print(
-    f"GD Spectral reconstruction, PSNR: {dinv.utils.metric.cal_psnr(x, x_gd_spec):.2f} dB; cosine similarity: {cosine_similarity(x_phase_gd_spec, x_phase):.3f}."
+    f"GD Spectral reconstruction, PSNR: {dinv.metric.cal_psnr(x, x_gd_spec).item():.2f} dB; cosine similarity: {cosine_similarity(x_phase_gd_spec, x_phase).item():.3f}."
 )
 print(
-    f"PnP reconstruction, PSNR: {dinv.utils.metric.cal_psnr(x, x_pnp):.2f} dB; cosine similarity: {cosine_similarity(x_phase_pnp, x_phase):.3f}."
+    f"PnP reconstruction, PSNR: {dinv.metric.cal_psnr(x, x_pnp).item():.2f} dB; cosine similarity: {cosine_similarity(x_phase_pnp, x_phase).item():.3f}."
 )

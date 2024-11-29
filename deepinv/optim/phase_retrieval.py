@@ -92,23 +92,57 @@ def generate_signal(
 
     return x
 
-
 def default_preprocessing(y, physics):
+    r"""
+    Default preprocessing function for spectral methods.
+
+    The output of the preprocessing function is given by:
+
+    .. math::
+        \max(1 - 1/y, -5).
+
+    :param torch.Tensor y: Measurements.
+    :param deepinv.physics physics: Instance of the physics modeling the forward matrix.
+
+    :return: The preprocessing function values evaluated at y.
+    """
     return torch.max(1 - 1 / y, torch.tensor(-5.0))
 
 
 def correct_global_phase(
-    x_recon: torch.Tensor, x: torch.Tensor, threshold=1e-5
+    x_recon: torch.Tensor,
+    x: torch.Tensor,
+    threshold: float = 1e-5,
+    verbose: bool = False,
 ) -> torch.Tensor:
     r"""
-    Corrects the global phase of the reconstructed image.
+        Corrects the global phase of the reconstructed image.
 
-    Do not mix the order of the reconstructed and original images since this function modifies x_recon in place.
+    .. warning::
 
-    :param torch.Tensor x_recon: Reconstructed image.
-    :param torch.Tensor x: Original image.
+        Do not mix the order of the reconstructed and original images since this function modifies x_recon in place.
 
-    :return: The corrected image.
+
+        The global phase shift is comptued per image and per channel as:
+
+        .. math::
+            e^{-i \phi} = \frac{\conj{\hat{x}} \cdot x}{|x|^2},
+
+        where :math:`\conj{\hat{x}}` is the complex conjugate of the reconstructed image, :math:`x` is the reference image, and :math:`|x|^2` is the squared magnitude of the reference image.
+
+        The global phase shift is then applied to the reconstructed image as:
+
+        .. math::
+            \hat{x} = \hat{x} \cdot e^{-i \phi},
+
+        for the corresponding image and channel.
+
+        :param torch.Tensor x_recon: Reconstructed image.
+        :param torch.Tensor x: Original image.
+        :param float threshold: Threshold to determine if the global phase shift is constant. Default is 1e-5.
+        :param bool verbose: If True, prints information about the global phase shift. Default is False.
+
+        :return: The corrected image.
     """
     assert x_recon.shape == x.shape, "The shapes of the images should be the same."
     assert (
@@ -122,9 +156,11 @@ def correct_global_phase(
         for j in range(n_channels):
             e_minus_phi = (x_recon[i, j].conj() * x[i, j]) / (x[i, j].abs() ** 2)
             if e_minus_phi.var() < threshold:
-                print(f"Image {i}, channel {j} has a constant global phase shift.")
+                if verbose:
+                    print(f"Image {i}, channel {j} has a constant global phase shift.")
             else:
-                print(f"Image {i}, channel {j} does not have a global phase shift.")
+                if verbose:
+                    print(f"Image {i}, channel {j} does not have a global phase shift.")
             e_minus_phi = e_minus_phi.mean()
             x_recon[i, j] = x_recon[i, j] * e_minus_phi
 
@@ -158,7 +194,7 @@ def spectral_methods(
     y: torch.Tensor,
     physics,
     x=None,
-    n_iter=1000,
+    n_iter=50,
     preprocessing=default_preprocessing,
     lamb=10.0,
     x_true=None,
@@ -166,17 +202,41 @@ def spectral_methods(
     log_metric=cosine_similarity,
     early_stop: bool = True,
     rtol: float = 1e-5,
-    verbose: bool = True,
+    verbose: bool = False,
 ):
     r"""
     Utility function for spectral methods.
 
+    This function runs the Spectral Methods algorithm to find the principal eigenvector of the regularized weighted covariance matrix:
+    
+    .. math::
+        \begin{equation*}
+        M = \conj{B} \text{diag}(T(y)) B + \lambda I,
+        \end{equation*}
+    
+    where :math:`B` is the linear operator of the phase retrieval class, :math:`T(\cdot)` is a preprocessing function for the measurements, and :math:`I` is the identity matrix of corresponding dimensions. Parameter :math:`\lambda` tunes the strength of regularization.
+
+    To find the principal eigenvector, the function runs power iteration which is given by
+
+    .. math::
+        \begin{equation*}
+        \begin{aligned}
+        x_{k+1} &= M x_k \\
+        x_{k+1} &= \frac{x_{k+1}}{\|x_{k+1}\|},
+        \end{aligned}
+        \end{equation*}
+  
     :param torch.Tensor y: Measurements.
     :param deepinv.physics physics: Instance of the physics modeling the forward matrix.
     :param torch.Tensor x: Initial guess for the signals :math:`x_0`.
     :param int n_iter: Number of iterations.
     :param function preprocessing: Function to preprocess the measurements. Default is :math:`\max(1 - 1/x, -5)`.
     :param float lamb: Regularization parameter. Default is 10.
+    :param bool log: Whether to log the metrics. Default is False.
+    :param function log_metric: Metric to log. Default is cosine similarity.
+    :param bool early_stop: Whether to early stop the iterations. Default is True.
+    :param float rtol: Relative tolerance for early stopping. Default is 1e-5.
+    :param bool verbose: If True, prints information in case of an early stop. Default is False.
 
     :return: The estimated signals :math:`x`.
     """
@@ -196,11 +256,11 @@ def spectral_methods(
     #! for the structured case, when the mean of the squared diagonal elements is 1, we have norm(x) = sqrt(sum(y)), otherwise y gets scaled by the mean to the power of number of layers
     norm_x = torch.sqrt(y.sum())
 
-    x = x.to(torch.complex64)
+    x = x.to(torch.cfloat)
     # y should have mean 1
     y = y / torch.mean(y)
     diag_T = preprocessing(y, physics)
-    diag_T = diag_T.to(torch.complex64)
+    diag_T = diag_T.to(torch.cfloat)
     for i in range(n_iter):
         x_new = physics.B(x)
         x_new = diag_T * x_new

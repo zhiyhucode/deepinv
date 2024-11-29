@@ -4,6 +4,7 @@ import math
 import numpy as np
 import torch
 
+from deepinv.optim.phase_retrieval import spectral_methods
 from deepinv.physics.compressed_sensing import CompressedSensing
 from deepinv.physics.forward import Physics, LinearPhysics
 from deepinv.physics.structured_random import (
@@ -57,7 +58,7 @@ class PhaseRetrieval(Physics):
         **kwargs,
     ):
         super().__init__(**kwargs)
-        self.name = f"PR_m{self.m}"
+        self.name = "Phase Retrieval"
 
         self.B = B
 
@@ -148,7 +149,9 @@ class RandomPhaseRetrieval(PhaseRetrieval):
     :param int m: number of measurements.
     :param tuple img_shape: shape (C, H, W) of inputs.
     :param bool channelwise: Channels are processed independently using the same random forward operator.
-    :param torch.type dtype: Forward matrix is stored as a dtype. Default is torch.complex64.
+    :param bool unitary: Use a random unitary matrix instead of Gaussian matrix. Default is False.
+    :param bool compute_inverse: Compute the pseudo-inverse of the forward matrix. Default is False.
+    :param torch.type dtype: Forward matrix is stored as a dtype. Default is torch.cfloat.
     :param str device: Device to store the forward matrix.
     :param torch.Generator (Optional) rng: a pseudorandom random number generator for the parameter generation.
         If ``None``, the default Generator of PyTorch will be used.
@@ -160,11 +163,11 @@ class RandomPhaseRetrieval(PhaseRetrieval):
         Random phase retrieval operator with 10 measurements for a 3x3 image:
 
         >>> seed = torch.manual_seed(0) # Random seed for reproducibility
-        >>> x = torch.randn((1, 1, 3, 3),dtype=torch.complex64) # Define random 3x3 image
-        >>> physics = RandomPhaseRetrieval(m=10,img_shape=(1, 3, 3))
+        >>> x = torch.randn((1, 1, 3, 3),dtype=torch.cfloat) # Define random 3x3 image
+        >>> physics = RandomPhaseRetrieval(m=6, img_shape=(1, 3, 3), rng=torch.Generator('cpu'))
         >>> physics(x)
-        tensor([[2.3043, 1.3553, 0.0087, 1.8518, 1.0845, 1.1561, 0.8668, 2.2031, 0.4542,
-                 0.0225]])
+        tensor([[3.8405, 2.2588, 0.0146, 3.0864, 1.8075, 0.1518]])
+
     """
 
     def __init__(
@@ -178,6 +181,7 @@ class RandomPhaseRetrieval(PhaseRetrieval):
         channelwise=False,
         dtype=torch.complex64,
         device="cpu",
+        unitary=False,
         rng: torch.Generator = None,
         **kwargs,
     ):
@@ -204,12 +208,14 @@ class RandomPhaseRetrieval(PhaseRetrieval):
             unit_mag=unit_mag,
             compute_inverse=compute_inverse,
             channelwise=channelwise,
+            unitary=unitary,
+            compute_inverse=compute_inverse,
             dtype=dtype,
             device=device,
             rng=self.rng,
         )
         super().__init__(B, **kwargs)
-        self.name = f"Random Phase Retrieval"
+        self.name = "Random Phase Retrieval"
 
     def get_A_squared_mean(self):
         return self.B._A.var() + self.B._A.mean() ** 2
