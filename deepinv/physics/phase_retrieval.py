@@ -209,7 +209,6 @@ class RandomPhaseRetrieval(PhaseRetrieval):
             compute_inverse=compute_inverse,
             channelwise=channelwise,
             unitary=unitary,
-            compute_inverse=compute_inverse,
             dtype=dtype,
             device=device,
             rng=self.rng,
