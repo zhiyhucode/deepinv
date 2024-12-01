@@ -350,11 +350,24 @@ def idct2(x: torch.Tensor, device):
         idct(idct(x.cpu().numpy(), axis=-2, norm="ortho"), axis=-1, norm="ortho")
     ).to(device)
 
+def hadamard1(x):
+    shape = x.shape
+
+    x = x.flatten()
+    real = x.real
+    imag = x.imag
+    real = hadamard_transform(real, scale=1 / np.sqrt(x.shape[0]))
+    imag = hadamard_transform(imag, scale=1 / np.sqrt(x.shape[0]))
+
+    x = real + 1j * imag
+    x = torch.reshape(x, shape)
+
+    return x 
 
 def hadamard2(x):
 
-    assert x.dim() == 4, "Input tensor must have shape (N, C, H, W)"
-    n, c, h, w = x.shape
+    assert x.dim() >= 2, "Input tensor must have shape (..., H, W)"
+    *_, h, w = x.shape
 
     real = x.real
     imag = x.imag
@@ -369,48 +382,42 @@ def hadamard2(x):
 
     x = real + 1j * imag
 
-    # x = x.flatten()
-    # real = x.real
-    # imag = x.imag
-    # real = hadamard_transform(real, scale=1 / np.sqrt(x.shape[0]))
-    # imag = hadamard_transform(imag, scale=1 / np.sqrt(x.shape[0]))
-
-    # x = real + 1j * imag
-    # x = torch.reshape(x, (n, c, h, w))
-
     return x
 
 
-def oversampling_matrix(m, n, dtype=torch.complex64, device="cpu"):
+def oversampling_matrix(m, n, pos="first", dtype=torch.complex64, device="cpu"):
     """Generate an oversampling matrix of shape (m, n) with its upper part being identity and the rest being zero"""
     assert m >= n, "m should be larger than or equal to n"
-    # return torch.cat((torch.eye(n), torch.zeros(m - n, n)), dim=0).to(dtype).to(device)
+    if pos == "first":
+        return torch.cat((torch.eye(n), torch.zeros(m - n, n)), dim=0).to(dtype).to(device)
     # alternative way, make the center of the matrix identity
     # dimension is still m x n
-    return (
-        torch.cat(
-            (torch.zeros((m - n) // 2, n), torch.eye(n), torch.zeros((m - n) // 2, n)),
-            dim=0,
+    elif pos == "center":
+        return (
+            torch.cat(
+                (torch.zeros(torch.ceil(m - n), n), torch.eye(n), torch.zeros(torch.floor(m - n), n)),
+                dim=0,
+            )
+            .to(dtype)
+            .to(device)
         )
-        .to(dtype)
-        .to(device)
-    )
 
 
-def subsampling_matrix(m, n, dtype=torch.complex64, device="cpu"):
+def subsampling_matrix(m, n, pos="first",dtype=torch.complex64, device="cpu"):
     """Generate a subsampling matrix of shape (m, n) with its left part being identity and the rest being zero"""
     assert m <= n, "m should be smaller than or equal to n"
-    # return torch.cat((torch.eye(m), torch.zeros(m, n - m)), dim=1).to(dtype).to(device)
+    if pos == "first":
+        return torch.cat((torch.eye(m), torch.zeros(m, n - m)), dim=1).to(dtype).to(device)
     # alternative way, make the center of the matrix identity
-    # dimension is still m x n
-    return (
-        torch.cat(
-            (torch.zeros(m, (n - m) // 2), torch.eye(m), torch.zeros(m, (n - m) // 2)),
-            dim=1,
+    elif pos == "center":
+        return (
+            torch.cat(
+                (torch.zeros(m, torch.ceil(n - m)), torch.eye(m), torch.zeros(m, torch.floor(n - m))),
+                dim=1,
+            )
+            .to(dtype)
+            .to(device)
         )
-        .to(dtype)
-        .to(device)
-    )
 
 
 def diagonal_matrix(diag: torch.tensor, dtype=torch.complex64, device="cpu"):
@@ -569,13 +576,14 @@ class StructuredRandom(LinearPhysics):
 
         super().__init__(A=A, A_adjoint=A_adjoint, **kwargs)
 
-    def forward_matrix(self):
+    def forward_matrix(self, verbose=False):
         """Given the structure of the operator, return the forward matrix."""
         m = np.prod(self.output_shape)
         p = np.prod(self.middle_shape)
         n = np.prod(self.input_shape)
 
-        print("computing transform matrix")
+        if verbose:
+            print("computing transform matrix")
         if self.transform == "fft":
             transform_matrix = dft_matrix(p, self.dtype, self.device)
         elif self.transform == "dct":
@@ -585,30 +593,33 @@ class StructuredRandom(LinearPhysics):
         else:
             raise ValueError(f"Unsupported transform: {self.transform}")
 
-        forward_matrix = torch.eye(n).to(self.dtype).to(self.device)
-        print("computing oversampling")
-        forward_matrix = (
-            oversampling_matrix(p, n, self.dtype, self.device) @ forward_matrix
+        mat = torch.eye(n).to(self.dtype).to(self.device)
+        if verbose:
+            print("computing oversampling")
+        mat = (
+            oversampling_matrix(p, n, dtype=self.dtype, device=self.device) @ mat
         )
-        print("computing transform")
+        if verbose:
+            print("computing transform")
         if self.n_layers - math.floor(self.n_layers) == 0.5:
-            forward_matrix = transform_matrix @ forward_matrix
+            mat = transform_matrix @ mat
         for i in range(math.floor(self.n_layers)):
-            forward_matrix = (
-                diagonal_matrix(self.diagonals[i].flatten()) @ forward_matrix
+            mat = (
+                diagonal_matrix(self.diagonals[i].flatten()) @ mat
             )
-            forward_matrix = transform_matrix @ forward_matrix
-        print("computing undersampling")
-        forward_matrix = (
-            subsampling_matrix(m, p, self.dtype, self.device) @ forward_matrix
+            mat = transform_matrix @ mat
+        if verbose:
+            print("computing undersampling")
+        mat = (
+            subsampling_matrix(m, p, dtype=self.dtype, device=self.device) @ mat
         )
 
-        self.matrix = forward_matrix
-        return forward_matrix
+        self.matrix = mat
+        return mat
 
     def singular_values(self):
         """Compute the singular values of the forward matrix"""
-        if self.forward_matrix is None:
+        if not hasattr(self, 'matrix'):
             self.forward_matrix()
         s = sp.linalg.svdvals(self.matrix.cpu().numpy())
         return s
