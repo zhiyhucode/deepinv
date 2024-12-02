@@ -92,6 +92,7 @@ def generate_signal(
 
     return x
 
+
 def default_preprocessing(y, physics):
     r"""
     Default preprocessing function for spectral methods.

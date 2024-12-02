@@ -11,30 +11,19 @@ from deepinv.physics.structured_random import (
     compare,
     generate_diagonal,
     generate_spectrum,
+    fft1,
+    ifft1,
+    fft2,
+    ifft2,
+    dct1,
+    idct1,
     dct2,
     idct2,
+    hadamard1,
     hadamard2,
     StructuredRandom,
 )
 from deepinv.optim.phase_retrieval import spectral_methods
-
-
-def dft_matrix(n, dtype=torch.cfloat, device="cpu"):
-    # given a dimension n, return the n x n DFT matrix
-    # normalize to have orthogonality
-    omega = np.exp(-2 * np.pi * 1j / n)
-    W = np.fromfunction(lambda i, j: omega ** (i * j), (n, n))
-    W = W / np.sqrt(n)
-    return W.astype(dtype).to(device)
-
-
-def dct_matrix(n, dtype=torch.cfloat, device="cpu"):
-    # given a dimension n, return the n x n DCT matrix
-    # normalize to have orthogonality
-    omega = np.exp(-2 * np.pi * 1j / (2 * n))
-    W = np.fromfunction(lambda i, j: omega ** (2 * i * j), (n, n))
-    W = W / np.sqrt(n)
-    return W.astype(dtype).to(device)
 
 
 class PhaseRetrieval(Physics):
@@ -74,16 +63,7 @@ class PhaseRetrieval(Physics):
 
     def A_dagger(self, y: torch.Tensor, **kwargs) -> torch.Tensor:
         r"""
-        Computes a initial reconstruction for the image :math:`x` from the measurements :math:`y`.
-
-        :param torch.Tensor y: measurements.
-        :return: (torch.Tensor) an initial reconstruction for image :math:`x`.
-        """
-        return spectral_methods(y, self, **kwargs)
-
-    def A_adjoint(self, y: torch.Tensor, **kwargs) -> torch.Tensor:
-        r"""
-        We use the spectral methods defined in :class:`deepinv.optim.phase_retrieval.spectral_methods` to obtain an initial inverse.
+        Computes a initial reconstruction for the image :math:`x` from the measurements :math:`y` using :class:`deepinv.optim.phase_retrieval.spectral_methods`.
 
         :param torch.Tensor y: measurements.
         :return: (torch.Tensor) an initial reconstruction for image :math:`x`.
@@ -249,12 +229,12 @@ class StructuredRandomPhaseRetrieval(PhaseRetrieval):
         input_shape: tuple,
         output_shape: tuple,
         n_layers: int,
-        transform="fft",
+        transform: str = "fourier2",
         diagonal_mode: list = [
             ["marchenko", "uniform"]
         ],  # lower index is closer to the input
         distri_config: dict = dict(),
-        spectrum: str = "uniform",
+        explicit_spectrum: str = "unit",
         pad_powers_of_two=False,
         shared_weights=False,
         dtype=torch.complex64,
@@ -266,7 +246,7 @@ class StructuredRandomPhaseRetrieval(PhaseRetrieval):
 
         self.mode = compare(input_shape, output_shape)
 
-        if transform == "hadamard":
+        if "hadamard" in transform:
             pad_powers_of_two = True
 
         if pad_powers_of_two:
@@ -297,13 +277,10 @@ class StructuredRandomPhaseRetrieval(PhaseRetrieval):
         self.dtype = dtype
         self.device = device
 
-        if self.mode == "undersampling":
-            spectrum_shape = self.output_shape
-        else:
-            spectrum_shape = self.input_shape
+        #! spectrum shape will always be the input shape
         self.spectrum = generate_spectrum(
-            shape=spectrum_shape,
-            mode=spectrum,
+            shape=input_shape,
+            mode=explicit_spectrum,
             config=self.distri_config,
             dtype=self.dtype,
             device=self.device,
@@ -336,13 +313,22 @@ class StructuredRandomPhaseRetrieval(PhaseRetrieval):
             )
             self.diagonals = self.diagonals + [diagonal] * math.floor(self.n_layers)
 
-        if transform == "fft":
-            transform_func = partial(torch.fft.fft2, norm="ortho")
-            transform_func_inv = partial(torch.fft.ifft2, norm="ortho")
-        elif transform == "dct":
+        if transform == "fourier1":
+            transform_func = fft1
+            transform_func_inv = ifft1
+        elif transform == "fourier2":
+            transform_func = fft2
+            transform_func_inv = ifft2
+        elif transform == "cosine1":
+            transform_func = partial(dct1, device=self.device)
+            transform_func_inv = partial(idct1, device=self.device)
+        elif transform == "cosine2":
             transform_func = partial(dct2, device=self.device)
             transform_func_inv = partial(idct2, device=self.device)
-        elif transform == "hadamard":
+        elif transform == "hadamard1":
+            transform_func = hadamard1
+            transform_func_inv = hadamard1
+        elif transform == "hadamard2":
             transform_func = hadamard2
             transform_func_inv = hadamard2
         else:
@@ -386,28 +372,9 @@ class StructuredRandomPhaseRetrieval(PhaseRetrieval):
         """
         return "FD" * math.floor(n_layers) + "F" * (n_layers % 1 == 0.5)
 
-    def forward_matrix(self) -> torch.Tensor:
-        r"""Returns the forward matrix of the operator.
+    def get_singular_values(self):
+        r"""Returns the singular values of the forward matrix.
 
-        :return: (torch.Tensor) the forward matrix.
+        :return: (torch.Tensor) the singular values.
         """
-
-        assert self.m >= self.n, "currently only supports oversampling"
-
-        forward_matrix = torch.eye(
-            n=self.m, m=self.n, dtype=self.dtype, device=self.device
-        )
-
-        if self.transform == "fft":
-            transform_matrix = dft_matrix(self.m, dtype=self.dtype, device=self.device)
-        elif self.transform == "dct":
-            transform_matrix = dct_matrix(self.m, dtype=self.dtype, device=self.device)
-
-        if self.n_layers % 1 == 0.5:
-            forward_matrix = transform_matrix @ forward_matrix
-
-        for diagonal in self.diagonals:
-            forward_matrix = torch.diag(diagonal.flatten()) @ forward_matrix
-            forward_matrix = transform_matrix @ forward_matrix
-
-        return forward_matrix
+        return self.B.get_singular_values()

@@ -10,7 +10,7 @@ signal:
 
 
 model:
-  explicit_spectrum: "unit"
+  spectrum: "unit"
   n_layers: 3
   diagonal:
     #! left one is closer to the input

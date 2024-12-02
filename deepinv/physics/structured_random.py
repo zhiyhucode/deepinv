@@ -75,7 +75,9 @@ class MarchenkoPastur(Distribution):
             2 * np.pi * self.sigma**2 * self.gamma * x
         )
 
-    def sample(self, shape: tuple[int, ...], include_zero=False, equisampling=False) -> np.ndarray:
+    def sample(
+        self, shape: tuple[int, ...], include_zero=False, equisampling=False
+    ) -> np.ndarray:
         """using acceptance-rejection sampling if oversampling ratio is more than 1, otherwise using the eigenvalues sampled from a real matrix"""
         if self.m < self.n:
             # there will be n - m zero eigenvalues, the rest nonzero eigenvalues follow the Marchenko-Pastur distribution
@@ -252,7 +254,9 @@ def generate_diagonal(
             mag = mag.to(dtype)
         elif mode[0] == "marchenko":
             mag = torch.from_numpy(
-                MarchenkoPastur(config["m"], config["n"]).sample(shape, equisampling=False)
+                MarchenkoPastur(config["m"], config["n"]).sample(
+                    shape, equisampling=False
+                )
             ).to(dtype)
             mag = torch.sqrt(mag)
         elif mode[0] == "semicircle":
@@ -302,7 +306,7 @@ def generate_spectrum(
         spectrum = torch.ones(shape, dtype=dtype)
     elif mode == "marchenko":
         spectrum = torch.from_numpy(
-            MarchenkoPastur(config["m"], config["n"]).sample(shape)
+            MarchenkoPastur(config["m"], config["n"]).sample(shape, include_zero=True)
         ).to(dtype)
         spectrum = torch.sqrt(spectrum)
     else:
@@ -334,6 +338,66 @@ def dst1(x):
     return x.view(*x_shape)
 
 
+def fft1(x: torch.Tensor, device) -> torch.Tensor:
+    r"""1D FFT
+
+    FFT is performed on the flattened input tensor and then reshape to the original shape.
+    """
+    shape = x.shape
+    x = x.flatten()
+    x = torch.fft.fft(x, norm="ortho")
+    return x.reshape(shape)
+
+
+def ifft1(x: torch.Tensor, device) -> torch.Tensor:
+    r"""1D IFFT
+
+    IFFT is performed on the flattened input tensor and then reshape to the original shape.
+    """
+    shape = x.shape
+    x = x.flatten()
+    x = torch.fft.ifft(x, norm="ortho")
+    return x.reshape(shape)
+
+
+def fft2(x: torch.Tensor, device) -> torch.Tensor:
+    r"""2D FFT
+
+    FFT is performed along the last two dimensions of the input tensor.
+    """
+    return torch.fft.fft2(x, norm="ortho")
+
+
+def ifft2(x: torch.Tensor, device) -> torch.Tensor:
+    r"""2D IFFT
+
+    IFFT is performed along the last two dimensions of the input tensor.
+    """
+    return torch.fft.ifft2(x, norm="ortho")
+
+
+def dct1(x: torch.Tensor, device) -> torch.Tensor:
+    r"""1D DCT
+
+    DCT is performed on the flattened input tensor and then reshape to the original shape.
+    """
+    shape = x.shape
+    x = x.flatten()
+    x = torch.from_numpy(dct(x.cpu().numpy(), norm="ortho")).to(device)
+    return x.reshape(shape)
+
+
+def idct1(x: torch.Tensor, device) -> torch.Tensor:
+    r"""1D IDCT
+
+    IDCT is performed on the flattened input tensor and then reshape to the original shape.
+    """
+    shape = x.shape
+    x = x.flatten()
+    x = torch.from_numpy(idct(x.cpu().numpy(), norm="ortho")).to(device)
+    return x.reshape(shape)
+
+
 def dct2(x: torch.Tensor, device):
     r"""2D DCT
 
@@ -353,6 +417,7 @@ def idct2(x: torch.Tensor, device):
         idct(idct(x.cpu().numpy(), axis=-2, norm="ortho"), axis=-1, norm="ortho")
     ).to(device)
 
+
 def hadamard1(x):
     shape = x.shape
 
@@ -365,7 +430,8 @@ def hadamard1(x):
     x = real + 1j * imag
     x = torch.reshape(x, shape)
 
-    return x 
+    return x
+
 
 def hadamard2(x):
 
@@ -388,52 +454,74 @@ def hadamard2(x):
     return x
 
 
-def oversampling_matrix(m: int, n: int, pos="center", dtype=torch.complex64, device="cpu") -> torch.Tensor:
+def oversampling_matrix(
+    m: int, n: int, pos="center", dtype=torch.complex64, device="cpu"
+) -> torch.Tensor:
     """Generate an oversampling matrix of shape (m, n) with its upper part being identity and the rest being zero"""
     assert m >= n, "m should be larger than or equal to n"
 
     if pos == "first":
-        return torch.cat((torch.eye(n), torch.zeros(m - n, n)), dim=0).to(dtype).to(device)
+        return (
+            torch.cat((torch.eye(n), torch.zeros(m - n, n)), dim=0).to(dtype).to(device)
+        )
     # alternative way, make the center of the matrix identity
     # dimension is still m x n
     elif pos == "center":
         return (
             torch.cat(
-                (torch.zeros(math.ceil((m - n)/2), n), torch.eye(n), torch.zeros(math.floor((m - n)/2), n)),
+                (
+                    torch.zeros(math.ceil((m - n) / 2), n),
+                    torch.eye(n),
+                    torch.zeros(math.floor((m - n) / 2), n),
+                ),
                 dim=0,
             )
             .to(dtype)
             .to(device)
         )
     elif pos == "last":
-        return torch.cat((torch.zeros(m - n, n), torch.eye(n)), dim=0).to(dtype).to(device)
+        return (
+            torch.cat((torch.zeros(m - n, n), torch.eye(n)), dim=0).to(dtype).to(device)
+        )
     else:
         raise ValueError(f"Unsupported position: {pos}")
 
 
-def subsampling_matrix(m: int, n: int, pos="center",dtype=torch.complex64, device="cpu") -> torch.Tensor:
+def subsampling_matrix(
+    m: int, n: int, pos="center", dtype=torch.complex64, device="cpu"
+) -> torch.Tensor:
     """Generate a subsampling matrix of shape (m, n) with its left part being identity and the rest being zero"""
     assert m <= n, "m should be smaller than or equal to n"
 
     if pos == "first":
-        return torch.cat((torch.eye(m), torch.zeros(m, n - m)), dim=1).to(dtype).to(device)
+        return (
+            torch.cat((torch.eye(m), torch.zeros(m, n - m)), dim=1).to(dtype).to(device)
+        )
     # alternative way, make the center of the matrix identity
     elif pos == "center":
         return (
             torch.cat(
-                (torch.zeros(m, math.ceil((n - m)/2)), torch.eye(m), torch.zeros(m, math.floor((n - m)/2))),
+                (
+                    torch.zeros(m, math.ceil((n - m) / 2)),
+                    torch.eye(m),
+                    torch.zeros(m, math.floor((n - m) / 2)),
+                ),
                 dim=1,
             )
             .to(dtype)
             .to(device)
         )
     elif pos == "last":
-        return torch.cat((torch.zeros(m, n - m), torch.eye(m)), dim=1).to(dtype).to(device)
+        return (
+            torch.cat((torch.zeros(m, n - m), torch.eye(m)), dim=1).to(dtype).to(device)
+        )
     else:
         raise ValueError(f"Unsupported position: {pos}")
 
 
-def diagonal_matrix(diag: torch.tensor, dtype=torch.complex64, device="cpu") -> torch.Tensor:
+def diagonal_matrix(
+    diag: torch.tensor, dtype=torch.complex64, device="cpu"
+) -> torch.Tensor:
     """Given a torch tensor, construct a diagonal matrix with the tensor as the diagonal"""
 
     return torch.diag(diag.flatten()).to(dtype).to(device)
@@ -539,8 +627,7 @@ class StructuredRandom(LinearPhysics):
                 x.shape[1:] == input_shape
             ), f"x doesn't have the correct shape {x.shape[1:]} != {input_shape}"
 
-            if mode == "oversampling" or mode == "equisampling":
-                x = x * spectrum
+            x = x * spectrum
 
             if len(input_shape) == 3:
                 x = padding(x, input_shape, middle_shape)
@@ -555,9 +642,6 @@ class StructuredRandom(LinearPhysics):
             if len(input_shape) == 3:
                 x = trimming(x, middle_shape, output_shape)
 
-            if mode == "undersampling":
-                x = x * spectrum
-
             return x
 
         def A_adjoint(y):
@@ -565,9 +649,6 @@ class StructuredRandom(LinearPhysics):
             assert (
                 y.shape[1:] == output_shape
             ), f"y doesn't have the correct shape {y.shape[1:]} != {output_shape}"
-
-            if mode == "undersampling":
-                y = y * torch.conj(spectrum)
 
             if len(input_shape) == 3:
                 y = padding(y, output_shape, middle_shape)
@@ -582,57 +663,53 @@ class StructuredRandom(LinearPhysics):
             if len(input_shape) == 3:
                 y = trimming(y, middle_shape, input_shape)
 
-            if mode == "oversampling" or mode == "equisampling":
-                y = y * torch.conj(spectrum)
+            y = y * torch.conj(spectrum)
 
             return y
 
         super().__init__(A=A, A_adjoint=A_adjoint, **kwargs)
 
-    def forward_matrix(self, verbose=False):
+    def get_forward_matrix(self, verbose=False):
         """Given the structure of the operator, return the forward matrix."""
-        m = np.prod(self.output_shape)
-        p = np.prod(self.middle_shape)
-        n = np.prod(self.input_shape)
+        if not hasattr(self, "forward_matrix"):
+            m = np.prod(self.output_shape)
+            p = np.prod(self.middle_shape)
+            n = np.prod(self.input_shape)
 
-        if verbose:
-            print("computing transform matrix")
-        if self.transform == "fft":
-            transform_matrix = dft_matrix(p, self.dtype, self.device)
-        elif self.transform == "dct":
-            transform_matrix = dct_matrix(p, self.dtype, self.device)
-        elif self.transform == "hadamard":
-            transform_matrix = hadamard_matrix(p, self.dtype, self.device)
+            if verbose:
+                print("computing transform matrix")
+            if self.transform == "fft":
+                transform_matrix = dft_matrix(p, self.dtype, self.device)
+            elif self.transform == "dct":
+                transform_matrix = dct_matrix(p, self.dtype, self.device)
+            elif self.transform == "hadamard":
+                transform_matrix = hadamard_matrix(p, self.dtype, self.device)
+            else:
+                raise ValueError(f"Unsupported transform: {self.transform}")
+
+            mat = torch.eye(n).to(self.dtype).to(self.device)
+            if verbose:
+                print("computing oversampling")
+            mat = oversampling_matrix(p, n, dtype=self.dtype, device=self.device) @ mat
+            if verbose:
+                print("computing transform")
+            if self.n_layers - math.floor(self.n_layers) == 0.5:
+                mat = transform_matrix @ mat
+            for i in range(math.floor(self.n_layers)):
+                mat = diagonal_matrix(self.diagonals[i].flatten()) @ mat
+                mat = transform_matrix @ mat
+            if verbose:
+                print("computing undersampling")
+            mat = subsampling_matrix(m, p, dtype=self.dtype, device=self.device) @ mat
+
+            self.forward_matrix = mat
+            return mat
         else:
-            raise ValueError(f"Unsupported transform: {self.transform}")
+            return self.forward_matrix
 
-        mat = torch.eye(n).to(self.dtype).to(self.device)
-        if verbose:
-            print("computing oversampling")
-        mat = (
-            oversampling_matrix(p, n, dtype=self.dtype, device=self.device) @ mat
-        )
-        if verbose:
-            print("computing transform")
-        if self.n_layers - math.floor(self.n_layers) == 0.5:
-            mat = transform_matrix @ mat
-        for i in range(math.floor(self.n_layers)):
-            mat = (
-                diagonal_matrix(self.diagonals[i].flatten()) @ mat
-            )
-            mat = transform_matrix @ mat
-        if verbose:
-            print("computing undersampling")
-        mat = (
-            subsampling_matrix(m, p, dtype=self.dtype, device=self.device) @ mat
-        )
-
-        self.matrix = mat
-        return mat
-
-    def singular_values(self):
+    def get_singular_values(self):
         """Compute the singular values of the forward matrix"""
-        if not hasattr(self, 'matrix'):
-            self.forward_matrix()
-        s = sp.linalg.svdvals(self.matrix.cpu().numpy())
+        if not hasattr(self, "forward_matrix"):
+            self.get_forward_matrix()
+        s = sp.linalg.svdvals(self.forward_matrix.cpu().numpy())
         return s

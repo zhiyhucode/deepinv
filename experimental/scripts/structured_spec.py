@@ -48,7 +48,7 @@ distri_config = config["model"]["diagonal"]["config"]
 if distri_config is None:
     distri_config = {}
 shared_weights = config["model"]["shared_weights"]
-spectrum = config["model"]["spectrum"]
+explicit_spectrum = config["model"]["explicit_spectrum"]
 
 # recon
 n_repeats = config["recon"]["n_repeats"]
@@ -115,6 +115,7 @@ for i in trange(n_oversampling):
 
     if oversampling_ratio - last_oversampling_ratio < 0.05:
         continue
+    # skip oversampling 1 as it takes too much time to sample
     if oversampling_ratio > 0.99 and oversampling_ratio < 1.01:
         continue
 
@@ -129,7 +130,7 @@ for i in trange(n_oversampling):
             transform=transform,
             diagonal_mode=diagonal_mode,
             distri_config=distri_config,
-            spectrum=spectrum,
+            explicit_spectrum=explicit_spectrum,
             shared_weights=shared_weights,
             dtype=torch.complex64,
             device=device,
