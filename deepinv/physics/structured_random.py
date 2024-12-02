@@ -75,7 +75,7 @@ class MarchenkoPastur(Distribution):
             2 * np.pi * self.sigma**2 * self.gamma * x
         )
 
-    def sample(self, shape: tuple[int, ...], include_zero=False) -> np.ndarray:
+    def sample(self, shape: tuple[int, ...], include_zero=False, equisampling=False) -> np.ndarray:
         """using acceptance-rejection sampling if oversampling ratio is more than 1, otherwise using the eigenvalues sampled from a real matrix"""
         if self.m < self.n:
             # there will be n - m zero eigenvalues, the rest nonzero eigenvalues follow the Marchenko-Pastur distribution
@@ -86,6 +86,9 @@ class MarchenkoPastur(Distribution):
                 return np.random.permutation(np.concatenate((nonzeros, zeros))).reshape(
                     shape
                 )
+            elif equisampling:
+                sub_distribution = MarchenkoPastur(self.n, self.n)
+                return sub_distribution.sample(shape)
             else:
                 return super().sample(shape)
         elif self.m == self.n:
@@ -249,7 +252,7 @@ def generate_diagonal(
             mag = mag.to(dtype)
         elif mode[0] == "marchenko":
             mag = torch.from_numpy(
-                MarchenkoPastur(config["m"], config["n"]).sample(shape)
+                MarchenkoPastur(config["m"], config["n"]).sample(shape, equisampling=False)
             ).to(dtype)
             mag = torch.sqrt(mag)
         elif mode[0] == "semicircle":
@@ -385,9 +388,10 @@ def hadamard2(x):
     return x
 
 
-def oversampling_matrix(m, n, pos="first", dtype=torch.complex64, device="cpu"):
+def oversampling_matrix(m: int, n: int, pos="center", dtype=torch.complex64, device="cpu") -> torch.Tensor:
     """Generate an oversampling matrix of shape (m, n) with its upper part being identity and the rest being zero"""
     assert m >= n, "m should be larger than or equal to n"
+
     if pos == "first":
         return torch.cat((torch.eye(n), torch.zeros(m - n, n)), dim=0).to(dtype).to(device)
     # alternative way, make the center of the matrix identity
@@ -395,32 +399,41 @@ def oversampling_matrix(m, n, pos="first", dtype=torch.complex64, device="cpu"):
     elif pos == "center":
         return (
             torch.cat(
-                (torch.zeros(torch.ceil(m - n), n), torch.eye(n), torch.zeros(torch.floor(m - n), n)),
+                (torch.zeros(math.ceil((m - n)/2), n), torch.eye(n), torch.zeros(math.floor((m - n)/2), n)),
                 dim=0,
             )
             .to(dtype)
             .to(device)
         )
+    elif pos == "last":
+        return torch.cat((torch.zeros(m - n, n), torch.eye(n)), dim=0).to(dtype).to(device)
+    else:
+        raise ValueError(f"Unsupported position: {pos}")
 
 
-def subsampling_matrix(m, n, pos="first",dtype=torch.complex64, device="cpu"):
+def subsampling_matrix(m: int, n: int, pos="center",dtype=torch.complex64, device="cpu") -> torch.Tensor:
     """Generate a subsampling matrix of shape (m, n) with its left part being identity and the rest being zero"""
     assert m <= n, "m should be smaller than or equal to n"
+
     if pos == "first":
         return torch.cat((torch.eye(m), torch.zeros(m, n - m)), dim=1).to(dtype).to(device)
     # alternative way, make the center of the matrix identity
     elif pos == "center":
         return (
             torch.cat(
-                (torch.zeros(m, torch.ceil(n - m)), torch.eye(m), torch.zeros(m, torch.floor(n - m))),
+                (torch.zeros(m, math.ceil((n - m)/2)), torch.eye(m), torch.zeros(m, math.floor((n - m)/2))),
                 dim=1,
             )
             .to(dtype)
             .to(device)
         )
+    elif pos == "last":
+        return torch.cat((torch.zeros(m, n - m), torch.eye(m)), dim=1).to(dtype).to(device)
+    else:
+        raise ValueError(f"Unsupported position: {pos}")
 
 
-def diagonal_matrix(diag: torch.tensor, dtype=torch.complex64, device="cpu"):
+def diagonal_matrix(diag: torch.tensor, dtype=torch.complex64, device="cpu") -> torch.Tensor:
     """Given a torch tensor, construct a diagonal matrix with the tensor as the diagonal"""
 
     return torch.diag(diag.flatten()).to(dtype).to(device)
