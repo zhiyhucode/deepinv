@@ -239,6 +239,7 @@ class StructuredRandomPhaseRetrieval(PhaseRetrieval):
         shared_weights=False,
         dtype=torch.complex64,
         device="cpu",
+        verbose=True,
         **kwargs,
     ):
         self.input_shape = input_shape
@@ -258,6 +259,9 @@ class StructuredRandomPhaseRetrieval(PhaseRetrieval):
             self.middle_shape = self.output_shape
         else:
             self.middle_shape = self.input_shape
+
+        if verbose:
+            print(f"middle shape: {self.middle_shape}")
 
         self.n = torch.prod(torch.tensor(self.input_shape))
         self.m = torch.prod(torch.tensor(self.output_shape))
@@ -314,11 +318,11 @@ class StructuredRandomPhaseRetrieval(PhaseRetrieval):
             self.diagonals = self.diagonals + [diagonal] * math.floor(self.n_layers)
 
         if transform == "fourier1":
-            transform_func = fft1
-            transform_func_inv = ifft1
+            transform_func = partial(fft1, device=self.device)
+            transform_func_inv = partial(ifft1, device=self.device)
         elif transform == "fourier2":
-            transform_func = fft2
-            transform_func_inv = ifft2
+            transform_func = partial(fft2, device=self.device)
+            transform_func_inv = partial(ifft2, device=self.device)
         elif transform == "cosine1":
             transform_func = partial(dct1, device=self.device)
             transform_func_inv = partial(idct1, device=self.device)

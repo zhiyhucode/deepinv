@@ -678,11 +678,11 @@ class StructuredRandom(LinearPhysics):
 
             if verbose:
                 print("computing transform matrix")
-            if self.transform == "fft":
+            if "fourier" in self.transform:
                 transform_matrix = dft_matrix(p, self.dtype, self.device)
-            elif self.transform == "dct":
+            elif "cosine" in self.transform:
                 transform_matrix = dct_matrix(p, self.dtype, self.device)
-            elif self.transform == "hadamard":
+            elif "hadamard" in self.transform:
                 transform_matrix = hadamard_matrix(p, self.dtype, self.device)
             else:
                 raise ValueError(f"Unsupported transform: {self.transform}")

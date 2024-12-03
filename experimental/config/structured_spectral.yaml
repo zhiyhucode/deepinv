@@ -1,25 +1,24 @@
 general:
-  name: "structured_marchenko3"
+  name: "structured_marchenko_fourier"
   recon: "spec"
-  save: True
+  save: False
 
 signal:
   shape: [1,1,64,64]
   mode: ["unit","shepp-logan"]
   config:
 
-
 model:
   explicit_spectrum: "unit"
-  n_layers: 3
+  n_layers: 2
   diagonal:
     #! left one is closer to the input
-    mode: [['marchenko','uniform'],['marchenko','uniform'],['marchenko','uniform']] # mag: 'unit', 'marchenko', phase: 'uniform', 'laplace', 'quadrant'
+    mode: [['marchenko','uniform'],['unit','uniform']] # mag: 'unit', 'marchenko', phase: 'uniform', 'laplace', 'quadrant'
     config:
       #degree_of_freedom: 30
       #radius: 0.8
-  transform: "fft" # 'fft', 'dct', 'hadamard'
-  pad_powers_of_two: False
+  transform: "fourier2" # 'fft', 'dct', 'hadamard'
+  pad_powers_of_two: True
   shared_weights: False
 
 recon:
