@@ -250,7 +250,7 @@ class StructuredRandomPhaseRetrieval(PhaseRetrieval):
         if "hadamard" in transform:
             pad_powers_of_two = True
 
-        if pad_powers_of_two:
+        if pad_powers_of_two is True:
             middle_size = 2 ** math.ceil(
                 math.log2(max(input_shape[1], output_shape[1]))
             )

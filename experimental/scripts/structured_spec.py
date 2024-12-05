@@ -49,6 +49,7 @@ if distri_config is None:
     distri_config = {}
 shared_weights = config["model"]["shared_weights"]
 explicit_spectrum = config["model"]["explicit_spectrum"]
+pad_powers_of_two = config["model"]["pad_powers_of_two"]
 
 # recon
 n_repeats = config["recon"]["n_repeats"]
@@ -131,6 +132,7 @@ for i in trange(n_oversampling):
             diagonal_mode=diagonal_mode,
             distri_config=distri_config,
             explicit_spectrum=explicit_spectrum,
+            pad_powers_of_two=pad_powers_of_two,
             shared_weights=shared_weights,
             dtype=torch.complex64,
             device=device,
