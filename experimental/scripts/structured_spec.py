@@ -33,7 +33,7 @@ save = config["general"]["save"]
 
 # signal
 shape = config["signal"]["shape"]
-mode = config["signal"]["mode"]
+signal_mode = config["signal"]["mode"]
 signal_config = config["signal"]["config"]
 if signal_config is None:
     signal_config = {}
@@ -93,13 +93,16 @@ if save:
 device = dinv.utils.get_freer_gpu() if torch.cuda.is_available() else "cpu"
 
 # Set up the signal to be reconstructed.
-x = generate_signal(
-    shape=shape,
-    mode=mode,
-    config=signal_config,
-    dtype=torch.complex64,
-    device=device,
-)
+if signal_mode == ["adversarial"]:
+    pass
+else:
+    x = generate_signal(
+        shape=shape,
+        mode=signal_mode,
+        config=signal_config,
+        dtype=torch.complex64,
+        device=device,
+    )
 
 
 df_res = pd.DataFrame(
@@ -137,6 +140,16 @@ for i in trange(n_oversampling):
             dtype=torch.complex64,
             device=device,
         )
+
+        if signal_mode == ["adversarial"]:
+            signal_config["physics"] = physics
+            x = generate_signal(
+                shape=shape,
+                mode=signal_mode,
+                config=signal_config,
+                dtype=torch.complex64,
+            )
+
         y = physics(x)
 
         x_spec = spectral_methods(y, physics, n_iter=max_iter)

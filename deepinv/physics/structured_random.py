@@ -8,6 +8,7 @@ from scipy.fft import dct, idct, fft
 import torch
 
 from deepinv.physics.forward import LinearPhysics
+from deepinv.optim.phase_retrieval import generate_signal
 
 
 class Distribution(ABC):
@@ -599,6 +600,8 @@ class StructuredRandom(LinearPhysics):
         self.transform_func = transform_func
         self.transform_func_inv = transform_func_inv
         self.diagonals = diagonals
+        self.dtype = dtype
+        self.device = device
         # default settings for fast compressed sensing
         if diagonals is None:
             diagonals = [
@@ -713,3 +716,54 @@ class StructuredRandom(LinearPhysics):
             self.get_forward_matrix()
         s = sp.linalg.svdvals(self.forward_matrix.cpu().numpy())
         return s
+    
+    def partial_forward(self,x,n_layers) -> torch.Tensor:
+        """Compute the forward operator until n_layers.
+        
+        x and return both have the middle shape"""
+        
+        assert (
+            x.shape[1:] == self.middle_shape
+        ), f"x doesn't have the correct shape {x.shape[1:]} != {self.input_shape}"
+
+        assert n_layers <= self.n_layers, f"n_layers should be less than or equal to {self.n_layers}"
+
+        for i in range(math.floor(n_layers)):
+            diagonal = self.diagonals[i]
+            x = diagonal * x
+            x = self.transform_func(x)
+
+        return x
+    
+    def partial_inverse(self,y,n_layers) -> torch.Tensor:
+        """Compute the inverse operator from n_layers to the start.
+        
+        y and return both have the middle shape.
+        """
+        
+        assert (
+            y.shape[1:] == self.middle_shape
+        ), f"y doesn't have the correct shape {y.shape[1:]} != {self.middle_shape}"
+
+        assert n_layers <= self.n_layers, f"n_layers should be less than or equal to {self.n_layers}"
+
+        for i in range(math.floor(n_layers)):
+            diagonal = self.diagonals[-(self.n_layers - n_layers)-i-1]
+            y = self.transform_func_inv(y)
+            y = y / diagonal
+
+        return y
+    
+    def get_adversarial(self, n_layers=None, trimmed=True) -> torch.Tensor:
+        """ returns the closest input to the signal which yields the measuremnts as a delta signal"""
+
+        if n_layers is None:
+            n_layers = self.n_layers
+
+        delta = generate_signal((1,)+self.middle_shape, mode=['delta','constant'],dtype=self.dtype, device=self.device)
+        adversarial = self.partial_inverse(delta, n_layers)
+
+        if trimmed is True:
+            return trimming(adversarial, self.middle_shape, self.input_shape)
+        else:
+            return adversarial

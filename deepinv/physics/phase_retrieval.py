@@ -4,7 +4,7 @@ import math
 import numpy as np
 import torch
 
-from deepinv.optim.phase_retrieval import spectral_methods
+from deepinv.optim.phase_retrieval import spectral_methods 
 from deepinv.physics.compressed_sensing import CompressedSensing
 from deepinv.physics.forward import Physics, LinearPhysics
 from deepinv.physics.structured_random import (
@@ -351,6 +351,8 @@ class StructuredRandomPhaseRetrieval(PhaseRetrieval):
             transform_func=transform_func,
             transform_func_inv=transform_func_inv,
             diagonals=self.diagonals,
+            dtype=self.dtype,
+            device=self.device,
             **kwargs,
         )
 
@@ -384,3 +386,14 @@ class StructuredRandomPhaseRetrieval(PhaseRetrieval):
         :return: (torch.Tensor) the singular values.
         """
         return self.B.get_singular_values()
+    
+    def partial_forward(self, x, n_layers):
+        return self.B.partial_forward(x, n_layers)
+
+    def partial_inverse(self, y, n_layers):
+        return self.B.partial_inverse(y, n_layers)
+    
+    def get_adversarial(self,n_layers=None,trimmed=True):
+        if n_layers is None:
+            n_layers = self.n_layers - 1
+        return self.B.get_adversarial(n_layers,trimmed)
