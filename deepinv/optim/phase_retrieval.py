@@ -41,6 +41,10 @@ def generate_signal(
         mag = torch.ones(shape, device=device)
     elif mode[0] == "random":
         mag = config["max_scale"] * torch.rand(shape, device=device)
+    elif mode[0] == "delta":
+        mag = torch.zeros(shape, device=device)
+        center = tuple(x // 2 for x in shape)
+        mag[center] = 1
     else:
         raise ValueError("Invalid magnitude mode.")
 
@@ -53,19 +57,19 @@ def generate_signal(
             resize_mode="resize",
             device=device,
         )
-    elif mode == "random":
+    elif mode[1] == "random":
         # random phase signal
         phase = torch.rand(shape, device=device)
-    elif mode == "delta":
+    elif mode[1] == "delta":
         phase = torch.zeros(shape, device=device)
         # randomly select one element of phase and set it to 1
         idx = tuple(np.random.randint(0, s) for s in shape)
         phase[idx] = 1
-    elif mode == "constant":
-        phase == config["constant"] * torch.ones((1, 1, shape, shape), device=device)
-    elif mode == "polar":
+    elif mode[1] == "constant":
+        phase = torch.zeros(shape, device=device)
+    elif mode[1] == "polar":
         # Create a tensor of probabilities (0.5 for each element)
-        probabilities = torch.full((1, 1, shape, shape), 0.5)
+        probabilities = torch.full(shape, 0.5)
         # Generate a tensor with values 0 or 1, with a 50% chance for each
         phase = torch.bernoulli(probabilities)
     else:

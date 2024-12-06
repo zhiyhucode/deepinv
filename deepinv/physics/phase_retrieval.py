@@ -228,7 +228,7 @@ class StructuredRandomPhaseRetrieval(PhaseRetrieval):
         self,
         input_shape: tuple,
         output_shape: tuple,
-        n_layers: int,
+        n_layers: float,
         transform: str = "fourier2",
         diagonal_mode: list = [
             ["marchenko", "uniform"]
@@ -242,6 +242,8 @@ class StructuredRandomPhaseRetrieval(PhaseRetrieval):
         verbose=True,
         **kwargs,
     ):
+        assert math.floor(n_layers) == len(diagonal_mode), "number of layers doesn't match the number of diagonals"
+
         self.input_shape = input_shape
         self.output_shape = output_shape
 

@@ -1,11 +1,11 @@
 general:
-  name: "structured_delta"
+  name: "structured_constant"
   recon: "spec"
   save: True
 
 signal:
   shape: [1,1,64,64]
-  mode: ["delta","constant"]
+  mode: ["unit","constant"]
   config:
 
 model:
