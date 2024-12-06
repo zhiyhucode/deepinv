@@ -1,5 +1,5 @@
 general:
-  name: "structured_marchenko2"
+  name: "structured_unitary_cosine"
   recon: "spec"
   save: True
 
@@ -13,12 +13,12 @@ model:
   n_layers: 2
   diagonal:
     #! left one is closer to the input
-    mode: [['marchenko','uniform'],['marchenko','uniform']] # mag: 'unit', 'marchenko', phase: 'uniform', 'laplace', 'quadrant'
+    mode: [['unit','uniform'],['unit','uniform']] # mag: 'unit', 'marchenko', phase: 'uniform', 'laplace', 'quadrant'
     config:
       #degree_of_freedom: 30
       #radius: 0.8
-  transform: "fourier2" # 'fourier', 'cosine', 'hadamard' + dimension
-  pad_powers_of_two: False
+  transform: "cosine2" # 'fourier', 'cosine', 'hadamard' + dimension
+  pad_powers_of_two: True
   shared_weights: False
 
 recon:
