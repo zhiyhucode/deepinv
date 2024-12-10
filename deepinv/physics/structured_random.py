@@ -722,11 +722,9 @@ class StructuredRandom(LinearPhysics):
         
         x and return both have the middle shape"""
         
-        assert (
-            x.shape[1:] == self.middle_shape
-        ), f"x doesn't have the correct shape {x.shape[1:]} != {self.input_shape}"
-
         assert n_layers <= self.n_layers, f"n_layers should be less than or equal to {self.n_layers}"
+
+        x = padding(x, self.input_shape, self.middle_shape)
 
         for i in range(math.floor(n_layers)):
             diagonal = self.diagonals[i]
@@ -741,10 +739,6 @@ class StructuredRandom(LinearPhysics):
         y and return both have the middle shape.
         """
         
-        assert (
-            y.shape[1:] == self.middle_shape
-        ), f"y doesn't have the correct shape {y.shape[1:]} != {self.middle_shape}"
-
         assert n_layers <= self.n_layers, f"n_layers should be less than or equal to {self.n_layers}"
 
         for i in range(math.floor(n_layers)):
@@ -761,9 +755,9 @@ class StructuredRandom(LinearPhysics):
             n_layers = self.n_layers
 
         delta = generate_signal((1,)+self.middle_shape, mode=['delta','constant'],dtype=self.dtype, device=self.device)
-        adversarial = self.partial_inverse(delta, n_layers)
+        adver = self.partial_inverse(delta, n_layers)
 
         if trimmed is True:
-            return trimming(adversarial, self.middle_shape, self.input_shape)
+            return trimming(adver, self.middle_shape, self.input_shape)
         else:
-            return adversarial
+            return adver

@@ -7,14 +7,14 @@ signal:
   shape: [1,1,64,64]
   mode: ["adversarial"] #["delta","constant"]
   config:
-    n_layers: 2
+    n_layers: 4
 
 model:
   explicit_spectrum: "unit"
-  n_layers: 2
+  n_layers: 4
   diagonal:
     #! left one is closer to the input
-    mode: [['marchenko','uniform'],['unit','uniform']] # mag: 'unit', 'marchenko', phase: 'uniform', 'laplace', 'quadrant'
+    mode: [['marchenko','uniform'],['unit','uniform'],['unit','uniform'],['unit','uniform']] # mag: 'unit', 'marchenko', phase: 'uniform', 'laplace', 'quadrant'
     config:
       #degree_of_freedom: 30
       #radius: 0.8
