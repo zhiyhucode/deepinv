@@ -1,23 +1,20 @@
 general:
-  name: "structured_2emulate3"
+  name: "structured_adversarial"
   recon: "spec"
   save: True
-  verbose: False
 
 signal:
   shape: [1,1,64,64]
-  mode: ["unit","shepp-logan"] #["delta","constant"]
+  mode: ["adversarial"] #["delta","constant"]
   config:
-    n_layers: 0
+    n_layers: 1
 
 model:
-  explicit_spectrum:
-    mode: "custom"
-    product: 3
-  n_layers: 2
+  explicit_spectrum: "unit"
+  n_layers: 4
   diagonal:
     #! left one is closer to the input
-    mode: [['unit','uniform'],['unit','uniform']] # mag: 'unit', 'marchenko', phase: 'uniform', 'laplace', 'quadrant'
+    mode: [['marchenko','uniform'],['unit','uniform'],['unit','uniform'],['unit','uniform']] # mag: 'unit', 'marchenko', phase: 'uniform', 'laplace', 'quadrant'
     config:
       #degree_of_freedom: 30
       #radius: 0.8

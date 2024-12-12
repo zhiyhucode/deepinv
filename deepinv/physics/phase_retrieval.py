@@ -235,6 +235,7 @@ class StructuredRandomPhaseRetrieval(PhaseRetrieval):
         ],  # lower index is closer to the input
         distri_config: dict = dict(),
         explicit_spectrum: str = "unit",
+        spectrum: torch.Tensor = None,
         pad_powers_of_two=False,
         shared_weights=False,
         dtype=torch.complex64,
@@ -279,6 +280,7 @@ class StructuredRandomPhaseRetrieval(PhaseRetrieval):
         self.distri_config = distri_config
         self.distri_config["m"] = self.m
         self.distri_config["n"] = self.n
+        self.distri_config["spectrum"] = spectrum
 
         self.dtype = dtype
         self.device = device

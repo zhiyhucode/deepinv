@@ -19,7 +19,7 @@ from deepinv.optim.phase_retrieval import (
     spectral_methods,
     generate_signal,
 )
-from deepinv.physics import StructuredRandomPhaseRetrieval
+from deepinv.physics import RandomPhaseRetrieval, StructuredRandomPhaseRetrieval
 
 # load config
 config_path = "../config/structured_spectral.yaml"
@@ -30,6 +30,7 @@ with open(config_path, "r") as file:
 model_name = config["general"]["name"]
 recon = config["general"]["recon"]
 save = config["general"]["save"]
+verbose = config["general"]["verbose"]
 
 # signal
 shape = config["signal"]["shape"]
@@ -49,7 +50,7 @@ distri_config = config["model"]["diagonal"]["config"]
 if distri_config is None:
     distri_config = {}
 shared_weights = config["model"]["shared_weights"]
-explicit_spectrum = config["model"]["explicit_spectrum"]
+explicit_spectrum = config["model"]["explicit_spectrum"]['mode']
 pad_powers_of_two = config["model"]["pad_powers_of_two"]
 
 # recon
@@ -127,6 +128,28 @@ for i in trange(n_oversampling):
     print(f"output_size: {output_size}")
     print(f"oversampling_ratio: {oversampling_ratio}")
     for j in range(n_repeats):
+        #* use spectrum from a full matrix
+        if explicit_spectrum == "custom":
+            example = RandomPhaseRetrieval(
+                m=output_size**2,
+                img_shape=(1, img_size, img_size),
+                product=config["model"]["explicit_spectrum"]["product"],
+                dtype=torch.complex64,
+                device=device,
+            )
+            spectrum = torch.linalg.svdvals(example.B._A)
+            # bootstrap the spectrum to have the dimension of img_size**2
+            extra = img_size**2 - output_size**2
+            if extra > 0:
+                extra_indices = torch.randint(0, spectrum.numel(), (extra,))
+                extra_spectrum = spectrum[extra_indices]
+                spectrum = torch.cat((spectrum, extra_spectrum))
+            # permute the spectrum
+            spectrum = spectrum[torch.randperm(spectrum.numel())]
+            spectrum = spectrum.reshape(1, img_size, img_size)
+        else:
+            spectrum = None
+        #* model setup
         physics = StructuredRandomPhaseRetrieval(
             input_shape=(1, img_size, img_size),
             output_shape=(1, output_size, output_size),
@@ -135,12 +158,14 @@ for i in trange(n_oversampling):
             diagonal_mode=diagonal_mode,
             distri_config=distri_config,
             explicit_spectrum=explicit_spectrum,
+            spectrum=spectrum,
             pad_powers_of_two=pad_powers_of_two,
             shared_weights=shared_weights,
             dtype=torch.complex64,
             device=device,
+            verbose=verbose,
         )
-
+        #* adversarial signal
         if signal_mode == ["adversarial"]:
             signal_config["physics"] = physics
             x = generate_signal(

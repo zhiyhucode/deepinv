@@ -172,6 +172,8 @@ class CompressedSensing(LinearPhysics):
                         (m, m), device=device, dtype=dtype
                     ) / np.sqrt(m)
                     self._A = gaussian @ self._A
+                    # delete gaussian matrix to save memory
+                    del gaussian
 
             if unit_mag is True:
                 self._A = self._A / self._A.abs()

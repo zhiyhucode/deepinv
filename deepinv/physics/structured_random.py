@@ -310,6 +310,8 @@ def generate_spectrum(
             MarchenkoPastur(config["m"], config["n"]).sample(shape, include_zero=True)
         ).to(dtype)
         spectrum = torch.sqrt(spectrum)
+    elif mode == "custom":
+        spectrum = config["spectrum"]
     else:
         raise ValueError(f"Unsupported mode: {mode}")
 
