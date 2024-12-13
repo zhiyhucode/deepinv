@@ -345,6 +345,7 @@ def plot_error_bars(
         zip(oversamplings, datasets, labels)
     ):
         print(label)
+        data = data.copy()
 
         if plot == "reconstruction":
             if "structured" in label:
