@@ -40,7 +40,7 @@ build
 deepinv.egg-info
 dist
 wandb/
-kernels
+kernels/
 measurements/
 degradations/
 datasets/
