@@ -1,10 +1,9 @@
-from functools import partial
 import math
 
 import numpy as np
 import torch
 
-from deepinv.optim.phase_retrieval import spectral_methods 
+from deepinv.optim.phase_retrieval import spectral_methods
 from deepinv.physics.compressed_sensing import CompressedSensing
 from deepinv.physics.forward import Physics, LinearPhysics
 from deepinv.physics.structured_random import (
@@ -228,10 +227,11 @@ class StructuredRandomPhaseRetrieval(PhaseRetrieval):
         self,
         input_shape: tuple,
         output_shape: tuple,
-        n_layers: float,
-        transform: str = "fourier2",
+        n_layers: float = 2,
+        transforms: list = ["fourier2", "fourier2"],
         diagonal_mode: list = [
-            ["marchenko", "uniform"]
+            ["marchenko", "uniform"],
+            ["unit", "uniform"],
         ],  # lower index is closer to the input
         distri_config: dict = dict(),
         explicit_spectrum: str = "unit",
@@ -243,15 +243,21 @@ class StructuredRandomPhaseRetrieval(PhaseRetrieval):
         verbose=True,
         **kwargs,
     ):
-        assert math.floor(n_layers) == len(diagonal_mode), "number of layers doesn't match the number of diagonals"
+        assert math.floor(n_layers) == len(
+            diagonal_mode
+        ), "number of layers doesn't match the number of diagonals"
+        assert math.ceil(n_layers) == len(
+            transforms
+        ), "number of layers doesn't match the number of transforms"
 
         self.input_shape = input_shape
         self.output_shape = output_shape
 
         self.mode = compare(input_shape, output_shape)
 
-        if "hadamard" in transform:
-            pad_powers_of_two = True
+        for transform in transforms:
+            if "hadamard" in transform:
+                pad_powers_of_two = True
 
         if pad_powers_of_two is True:
             middle_size = 2 ** math.ceil(
@@ -275,7 +281,7 @@ class StructuredRandomPhaseRetrieval(PhaseRetrieval):
         self.n_layers = n_layers
         self.structure = self.get_structure(self.n_layers)
         self.shared_weights = shared_weights
-        self.transform = transform
+        self.transforms = transforms
 
         self.distri_config = distri_config
         self.distri_config["m"] = self.m
@@ -321,27 +327,6 @@ class StructuredRandomPhaseRetrieval(PhaseRetrieval):
             )
             self.diagonals = self.diagonals + [diagonal] * math.floor(self.n_layers)
 
-        if transform == "fourier1":
-            transform_func = partial(fft1, device=self.device)
-            transform_func_inv = partial(ifft1, device=self.device)
-        elif transform == "fourier2":
-            transform_func = partial(fft2, device=self.device)
-            transform_func_inv = partial(ifft2, device=self.device)
-        elif transform == "cosine1":
-            transform_func = partial(dct1, device=self.device)
-            transform_func_inv = partial(idct1, device=self.device)
-        elif transform == "cosine2":
-            transform_func = partial(dct2, device=self.device)
-            transform_func_inv = partial(idct2, device=self.device)
-        elif transform == "hadamard1":
-            transform_func = hadamard1
-            transform_func_inv = hadamard1
-        elif transform == "hadamard2":
-            transform_func = hadamard2
-            transform_func_inv = hadamard2
-        else:
-            raise ValueError(f"Unimplemented transform: {transform}")
-
         B = StructuredRandom(
             mode=self.mode,
             spectrum=self.spectrum,
@@ -349,9 +334,7 @@ class StructuredRandomPhaseRetrieval(PhaseRetrieval):
             output_shape=self.output_shape,
             middle_shape=self.middle_shape,
             n_layers=self.n_layers,
-            transform=self.transform,
-            transform_func=transform_func,
-            transform_func_inv=transform_func_inv,
+            transforms=self.transforms,
             diagonals=self.diagonals,
             dtype=self.dtype,
             device=self.device,
@@ -388,14 +371,14 @@ class StructuredRandomPhaseRetrieval(PhaseRetrieval):
         :return: (torch.Tensor) the singular values.
         """
         return self.B.get_singular_values()
-    
+
     def partial_forward(self, x, n_layers):
         return self.B.partial_forward(x, n_layers)
 
     def partial_inverse(self, y, n_layers):
         return self.B.partial_inverse(y, n_layers)
-    
-    def get_adversarial(self,n_layers=None,trimmed=True):
+
+    def get_adversarial(self, n_layers=None, trimmed=True):
         if n_layers is None:
             n_layers = self.n_layers - 1
-        return self.B.get_adversarial(n_layers,trimmed)
+        return self.B.get_adversarial(n_layers, trimmed)

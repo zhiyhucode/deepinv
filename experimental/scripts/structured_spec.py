@@ -44,13 +44,13 @@ print("signal_config:", signal_config)
 img_size = config["signal"]["shape"][-1]
 n_layers = config["model"]["n_layers"]
 structure = StructuredRandomPhaseRetrieval.get_structure(n_layers)
-transform = config["model"]["transform"]
+transforms = config["model"]["transforms"]
 diagonal_mode = config["model"]["diagonal"]["mode"]
 distri_config = config["model"]["diagonal"]["config"]
 if distri_config is None:
     distri_config = {}
 shared_weights = config["model"]["shared_weights"]
-explicit_spectrum = config["model"]["explicit_spectrum"]['mode']
+explicit_spectrum = config["model"]["explicit_spectrum"]["mode"]
 pad_powers_of_two = config["model"]["pad_powers_of_two"]
 
 # recon
@@ -128,7 +128,7 @@ for i in trange(n_oversampling):
     print(f"output_size: {output_size}")
     print(f"oversampling_ratio: {oversampling_ratio}")
     for j in range(n_repeats):
-        #* use spectrum from a full matrix
+        # * use spectrum from a full matrix
         if explicit_spectrum == "custom":
             example = RandomPhaseRetrieval(
                 m=output_size**2,
@@ -149,12 +149,12 @@ for i in trange(n_oversampling):
             spectrum = spectrum.reshape(1, img_size, img_size)
         else:
             spectrum = None
-        #* model setup
+        # * model setup
         physics = StructuredRandomPhaseRetrieval(
             input_shape=(1, img_size, img_size),
             output_shape=(1, output_size, output_size),
             n_layers=n_layers,
-            transform=transform,
+            transforms=transforms,
             diagonal_mode=diagonal_mode,
             distri_config=distri_config,
             explicit_spectrum=explicit_spectrum,
@@ -165,7 +165,7 @@ for i in trange(n_oversampling):
             device=device,
             verbose=verbose,
         )
-        #* adversarial signal
+        # * adversarial signal
         if signal_mode == ["adversarial"]:
             signal_config["physics"] = physics
             x = generate_signal(

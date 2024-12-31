@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from functools import partial
 import math
 
 from fast_hadamard_transform import hadamard_transform
@@ -580,9 +581,7 @@ class StructuredRandom(LinearPhysics):
         output_shape: tuple,
         middle_shape: tuple = None,
         n_layers=1,
-        transform="dst1",
-        transform_func=dst1,
-        transform_func_inv=dst1,
+        transforms=["dst1"],
         diagonals=None,
         spectrum=None,
         dtype=torch.complex64,
@@ -598,9 +597,7 @@ class StructuredRandom(LinearPhysics):
         self.middle_shape = middle_shape
         self.output_shape = output_shape
         self.n_layers = n_layers
-        self.transform = transform
-        self.transform_func = transform_func
-        self.transform_func_inv = transform_func_inv
+        self.transforms = transforms
         self.diagonals = diagonals
         self.dtype = dtype
         self.device = device
@@ -625,6 +622,33 @@ class StructuredRandom(LinearPhysics):
                 device=device,
             )
 
+        self.transform_funcs = []
+        self.transform_inv_funcs = []
+        for transform in transforms:
+            if transform == "dst1":
+                self.transform_funcs.append(dst1)
+                self.transform_inv_funcs.append(dst1)
+            if transform == "fourier1":
+                self.transform_funcs.append(partial(fft1, device=self.device))
+                self.transform_inv_funcs.append(partial(ifft1, device=self.device))
+            elif transform == "fourier2":
+                self.transform_funcs.append(partial(fft2, device=self.device))
+                self.transform_inv_funcs.append(partial(ifft2, device=self.device))
+            elif transform == "cosine1":
+                self.transform_funcs.append(partial(dct1, device=self.device))
+                self.transform_inv_funcs.append(partial(idct1, device=self.device))
+            elif transform == "cosine2":
+                self.transform_funcs.append(partial(dct2, device=self.device))
+                self.transform_inv_funcs.append(partial(idct2, device=self.device))
+            elif transform == "hadamard1":
+                self.transform_funcs.append(hadamard1)
+                self.transform_inv_funcs.append(hadamard1)
+            elif transform == "hadamard2":
+                self.transform_funcs.append(hadamard2)
+                self.transform_inv_funcs.append(hadamard2)
+            else:
+                raise ValueError(f"Unimplemented transform: {transform}")
+
         # forward operator
         def A(x):
 
@@ -637,12 +661,16 @@ class StructuredRandom(LinearPhysics):
             if len(input_shape) == 3:
                 x = padding(x, input_shape, middle_shape)
 
+            # position of the transform
+            p = 0
             if n_layers - math.floor(n_layers) == 0.5:
-                x = transform_func(x)
+                x = self.transform_funcs[p](x)
+                p += 1
             for i in range(math.floor(n_layers)):
                 diagonal = diagonals[i]
                 x = diagonal * x
-                x = transform_func(x)
+                x = self.transform_funcs[p](x)
+                p += 1
 
             if len(input_shape) == 3:
                 x = trimming(x, middle_shape, output_shape)
@@ -659,11 +687,10 @@ class StructuredRandom(LinearPhysics):
                 y = padding(y, output_shape, middle_shape)
 
             for i in range(math.floor(n_layers)):
-                diagonal = diagonals[-i - 1]
-                y = transform_func_inv(y)
-                y = torch.conj(diagonal) * y
+                y = self.transform_inv_funcs[-i - 1](y)
+                y = torch.conj(diagonals[-i - 1]) * y
             if n_layers - math.floor(n_layers) == 0.5:
-                y = transform_func_inv(y)
+                y = self.transform_inv_funcs[0](y)
 
             if len(input_shape) == 3:
                 y = trimming(y, middle_shape, input_shape)
@@ -718,13 +745,15 @@ class StructuredRandom(LinearPhysics):
             self.get_forward_matrix()
         s = sp.linalg.svdvals(self.forward_matrix.cpu().numpy())
         return s
-    
-    def partial_forward(self,x,n_layers) -> torch.Tensor:
+
+    def partial_forward(self, x, n_layers) -> torch.Tensor:
         """Compute the forward operator until n_layers.
-        
+
         x and return both have the middle shape"""
-        
-        assert n_layers <= self.n_layers, f"n_layers should be less than or equal to {self.n_layers}"
+
+        assert (
+            n_layers <= self.n_layers
+        ), f"n_layers should be less than or equal to {self.n_layers}"
 
         x = padding(x, self.input_shape, self.middle_shape)
 
@@ -734,29 +763,38 @@ class StructuredRandom(LinearPhysics):
             x = self.transform_func(x)
 
         return x
-    
-    def partial_inverse(self,y,n_layers) -> torch.Tensor:
+
+    def partial_inverse(self, y, n_layers) -> torch.Tensor:
         """Compute the inverse operator from n_layers to the start.
-        
+
         y and return both have the middle shape.
         """
-        
-        assert n_layers <= self.n_layers, f"n_layers should be less than or equal to {self.n_layers}"
+
+        assert (
+            n_layers <= self.n_layers
+        ), f"n_layers should be less than or equal to {self.n_layers}"
+        assert (
+            self.n_layers - math.floor(self.n_layers) == 0.0
+        ), "currently only support integer number of layers"
 
         for i in range(math.floor(n_layers)):
-            diagonal = self.diagonals[-(self.n_layers - n_layers)-i-1]
-            y = self.transform_func_inv(y)
-            y = y / diagonal
+            y = self.transform_inv_funcs[-(self.n_layers - n_layers) - i - 1](y)
+            y = y / self.diagonals[-(self.n_layers - n_layers) - i - 1]
 
         return y
-    
+
     def get_adversarial(self, n_layers=None, trimmed=True) -> torch.Tensor:
-        """ returns the closest input to the signal which yields the measuremnts as a delta signal"""
+        """returns the closest input to the signal which yields the measuremnts as a delta signal"""
 
         if n_layers is None:
             n_layers = self.n_layers
 
-        delta = generate_signal((1,)+self.middle_shape, mode=['delta','constant'],dtype=self.dtype, device=self.device)
+        delta = generate_signal(
+            (1,) + self.middle_shape,
+            mode=["delta", "constant"],
+            dtype=self.dtype,
+            device=self.device,
+        )
         adver = self.partial_inverse(delta, n_layers)
 
         if trimmed is True:

@@ -36,7 +36,7 @@ def generate_signal(
 
     if len(mode) == 1:
         if mode[0] == "adversarial":
-            x = config['physics'].get_adversarial(n_layers=config['n_layers'])
+            x = config["physics"].get_adversarial(n_layers=config["n_layers"])
         else:
             raise ValueError("Invalid mode.")
 
