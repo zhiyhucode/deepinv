@@ -22,7 +22,7 @@ from deepinv.optim.phase_retrieval import (
 from deepinv.physics import RandomPhaseRetrieval, StructuredRandomPhaseRetrieval
 
 # load config
-config_path = "../config/structured_spectral.yaml"
+config_path = "../config/structured_spec.yaml"
 with open(config_path, "r") as file:
     config = yaml.safe_load(file)
 
@@ -45,12 +45,12 @@ img_size = config["signal"]["shape"][-1]
 n_layers = config["model"]["n_layers"]
 structure = StructuredRandomPhaseRetrieval.get_structure(n_layers)
 transforms = config["model"]["transforms"]
-diagonal_mode = config["model"]["diagonal"]["mode"]
-distri_config = config["model"]["diagonal"]["config"]
-if distri_config is None:
-    distri_config = {}
+diagonals = config["model"]["diagonals"]["mode"]
+diagonal_config = config["model"]["diagonals"]["config"]
+if diagonal_config is None:
+    diagonal_config = {}
 shared_weights = config["model"]["shared_weights"]
-explicit_spectrum = config["model"]["explicit_spectrum"]["mode"]
+spectrum = config["model"]["spectrum"]["mode"]
 pad_powers_of_two = config["model"]["pad_powers_of_two"]
 
 # recon
@@ -129,11 +129,11 @@ for i in trange(n_oversampling):
     print(f"oversampling_ratio: {oversampling_ratio}")
     for j in range(n_repeats):
         # * use spectrum from a full matrix
-        if explicit_spectrum == "custom":
+        if spectrum == "custom":
             example = RandomPhaseRetrieval(
                 m=output_size**2,
                 img_shape=(1, img_size, img_size),
-                product=config["model"]["explicit_spectrum"]["product"],
+                product=config["model"]["spectrum"]["product"],
                 dtype=torch.complex64,
                 device=device,
             )
@@ -147,17 +147,14 @@ for i in trange(n_oversampling):
             # permute the spectrum
             spectrum = spectrum[torch.randperm(spectrum.numel())]
             spectrum = spectrum.reshape(1, img_size, img_size)
-        else:
-            spectrum = None
         # * model setup
         physics = StructuredRandomPhaseRetrieval(
             input_shape=(1, img_size, img_size),
             output_shape=(1, output_size, output_size),
             n_layers=n_layers,
             transforms=transforms,
-            diagonal_mode=diagonal_mode,
-            distri_config=distri_config,
-            explicit_spectrum=explicit_spectrum,
+            diagonals=diagonals,
+            diagonal_config=diagonal_config,
             spectrum=spectrum,
             pad_powers_of_two=pad_powers_of_two,
             shared_weights=shared_weights,

@@ -121,27 +121,6 @@ class SemiCircle(Distribution):
         return 2 / (np.pi * self.radius**2) * np.sqrt(self.radius**2 - (x - 1) ** 2)
 
 
-def compare(input_shape: tuple, output_shape: tuple) -> str:
-    r"""
-    Compare input and output shape to determine the sampling mode.
-
-    :param tuple input_shape: Input shape (C, H, W).
-    :param tuple output_shape: Output shape (C, H, W).
-
-    :return: The sampling mode in ["oversampling","undersampling","equisampling].
-    """
-    if input_shape[1] == output_shape[1] and input_shape[2] == output_shape[2]:
-        return "equisampling"
-    elif input_shape[1] <= output_shape[1] and input_shape[2] <= output_shape[2]:
-        return "oversampling"
-    elif input_shape[1] >= output_shape[1] and input_shape[2] >= output_shape[2]:
-        return "undersampling"
-    else:
-        raise ValueError(
-            "Does not support different sampling schemes on height and width."
-        )
-
-
 def padding(tensor: torch.Tensor, input_shape: tuple, output_shape: tuple):
     r"""
     Zero padding function for oversampling in structured random phase retrieval.
@@ -311,8 +290,6 @@ def generate_spectrum(
             MarchenkoPastur(config["m"], config["n"]).sample(shape, include_zero=True)
         ).to(dtype)
         spectrum = torch.sqrt(spectrum)
-    elif mode == "custom":
-        spectrum = config["spectrum"]
     else:
         raise ValueError(f"Unsupported mode: {mode}")
 
@@ -576,33 +553,54 @@ class StructuredRandom(LinearPhysics):
 
     def __init__(
         self,
-        mode: str,
         input_shape: tuple,
         output_shape: tuple,
         middle_shape: tuple = None,
         n_layers=1,
+        spectrum=None,
         transforms=["dst1"],
         diagonals=None,
-        spectrum=None,
+        diagonal_config=None,
+        shared_weights=False,
         dtype=torch.complex64,
         device="cpu",
         rng: torch.Generator = None,
         **kwargs,
     ):
 
-        self.dtype = dtype
-        self.device = device
-
         self.input_shape = input_shape
         self.middle_shape = middle_shape
         self.output_shape = output_shape
         self.n_layers = n_layers
-        self.transforms = transforms
-        self.diagonals = diagonals
         self.dtype = dtype
         self.device = device
-        # default settings for fast compressed sensing
+
+        # * generate spectrum
+        if spectrum is None:
+            # default setting for fast compressed sensing
+            spectrum = generate_spectrum(
+                shape=input_shape,
+                mode="uniform",
+                dtype=torch.float,
+                generator=rng,
+                device=device,
+            )
+        if isinstance(spectrum, str):
+            #! spectrum shape will always be the input shape
+            self.spectrum = generate_spectrum(
+                shape=input_shape,
+                mode=spectrum,
+                config=diagonal_config,
+                dtype=self.dtype,
+                device=self.device,
+                generator=torch.Generator(device=device),
+            )
+        else:
+            self.spectrum = spectrum
+
+        # * generate diagonal matrices
         if diagonals is None:
+            # default settings for fast compressed sensing
             diagonals = [
                 generate_diagonal(
                     shape=input_shape,
@@ -612,40 +610,52 @@ class StructuredRandom(LinearPhysics):
                     device=device,
                 )
             ]
-
-        if spectrum is None:
-            spectrum = generate_spectrum(
-                shape=input_shape,
-                mode="uniform",
-                dtype=torch.float,
-                generator=rng,
-                device=device,
+        self.diagonals = []
+        if not shared_weights:
+            for i in range(math.floor(self.n_layers)):
+                diagonal = generate_diagonal(
+                    self.middle_shape,
+                    mode=diagonals[i],
+                    dtype=self.dtype,
+                    device=self.device,
+                    config=diagonal_config,
+                )
+                self.diagonals.append(diagonal)
+        else:
+            diagonal = generate_diagonal(
+                self.middle_shape,
+                mode=diagonals[0],
+                dtype=self.dtype,
+                device=self.device,
+                config=diagonal_config,
             )
+            self.diagonals = self.diagonals + [diagonal] * math.floor(self.n_layers)
 
-        self.transform_funcs = []
-        self.transform_inv_funcs = []
+        # * generate transform functions
+        self.transforms = []
+        self.transform_invs = []
         for transform in transforms:
             if transform == "dst1":
-                self.transform_funcs.append(dst1)
-                self.transform_inv_funcs.append(dst1)
+                self.transforms.append(dst1)
+                self.transform_invs.append(dst1)
             if transform == "fourier1":
-                self.transform_funcs.append(partial(fft1, device=self.device))
-                self.transform_inv_funcs.append(partial(ifft1, device=self.device))
+                self.transforms.append(partial(fft1, device=self.device))
+                self.transform_invs.append(partial(ifft1, device=self.device))
             elif transform == "fourier2":
-                self.transform_funcs.append(partial(fft2, device=self.device))
-                self.transform_inv_funcs.append(partial(ifft2, device=self.device))
+                self.transforms.append(partial(fft2, device=self.device))
+                self.transform_invs.append(partial(ifft2, device=self.device))
             elif transform == "cosine1":
-                self.transform_funcs.append(partial(dct1, device=self.device))
-                self.transform_inv_funcs.append(partial(idct1, device=self.device))
+                self.transforms.append(partial(dct1, device=self.device))
+                self.transform_invs.append(partial(idct1, device=self.device))
             elif transform == "cosine2":
-                self.transform_funcs.append(partial(dct2, device=self.device))
-                self.transform_inv_funcs.append(partial(idct2, device=self.device))
+                self.transforms.append(partial(dct2, device=self.device))
+                self.transform_invs.append(partial(idct2, device=self.device))
             elif transform == "hadamard1":
-                self.transform_funcs.append(hadamard1)
-                self.transform_inv_funcs.append(hadamard1)
+                self.transforms.append(hadamard1)
+                self.transform_invs.append(hadamard1)
             elif transform == "hadamard2":
-                self.transform_funcs.append(hadamard2)
-                self.transform_inv_funcs.append(hadamard2)
+                self.transforms.append(hadamard2)
+                self.transform_invs.append(hadamard2)
             else:
                 raise ValueError(f"Unimplemented transform: {transform}")
 
@@ -653,49 +663,47 @@ class StructuredRandom(LinearPhysics):
         def A(x):
 
             assert (
-                x.shape[1:] == input_shape
-            ), f"x doesn't have the correct shape {x.shape[1:]} != {input_shape}"
+                x.shape[1:] == self.input_shape
+            ), f"x doesn't have the correct shape {x.shape[1:]} != {self.input_shape}"
+            x = x * self.spectrum
 
-            x = x * spectrum
-
-            if len(input_shape) == 3:
-                x = padding(x, input_shape, middle_shape)
+            if len(self.input_shape) == 3:
+                x = padding(x, self.input_shape, self.middle_shape)
 
             # position of the transform
             p = 0
-            if n_layers - math.floor(n_layers) == 0.5:
-                x = self.transform_funcs[p](x)
+            if self.n_layers - math.floor(self.n_layers) == 0.5:
+                x = self.transforms[p](x)
                 p += 1
-            for i in range(math.floor(n_layers)):
-                diagonal = diagonals[i]
-                x = diagonal * x
-                x = self.transform_funcs[p](x)
+            for i in range(math.floor(self.n_layers)):
+                x = self.diagonals[i] * x
+                x = self.transforms[p](x)
                 p += 1
 
-            if len(input_shape) == 3:
-                x = trimming(x, middle_shape, output_shape)
+            if len(self.input_shape) == 3:
+                x = trimming(x, self.middle_shape, self.output_shape)
 
             return x
 
         def A_adjoint(y):
 
             assert (
-                y.shape[1:] == output_shape
-            ), f"y doesn't have the correct shape {y.shape[1:]} != {output_shape}"
+                y.shape[1:] == self.output_shape
+            ), f"y doesn't have the correct shape {y.shape[1:]} != {self.output_shape}"
 
-            if len(input_shape) == 3:
-                y = padding(y, output_shape, middle_shape)
+            if len(self.input_shape) == 3:
+                y = padding(y, self.output_shape, self.middle_shape)
 
-            for i in range(math.floor(n_layers)):
-                y = self.transform_inv_funcs[-i - 1](y)
-                y = torch.conj(diagonals[-i - 1]) * y
-            if n_layers - math.floor(n_layers) == 0.5:
-                y = self.transform_inv_funcs[0](y)
+            for i in range(math.floor(self.n_layers)):
+                y = self.transform_invs[-i - 1](y)
+                y = torch.conj(self.diagonals[-i - 1]) * y
+            if self.n_layers - math.floor(self.n_layers) == 0.5:
+                y = self.transform_invs[0](y)
 
-            if len(input_shape) == 3:
-                y = trimming(y, middle_shape, input_shape)
+            if len(self.input_shape) == 3:
+                y = trimming(y, self.middle_shape, self.input_shape)
 
-            y = y * torch.conj(spectrum)
+            y = y * torch.conj(self.spectrum)
 
             return y
 
@@ -778,7 +786,7 @@ class StructuredRandom(LinearPhysics):
         ), "currently only support integer number of layers"
 
         for i in range(math.floor(n_layers)):
-            y = self.transform_inv_funcs[-(self.n_layers - n_layers) - i - 1](y)
+            y = self.transform_invs[-(self.n_layers - n_layers) - i - 1](y)
             y = y / self.diagonals[-(self.n_layers - n_layers) - i - 1]
 
         return y

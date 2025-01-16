@@ -4,23 +4,29 @@ import numpy as np
 from deepinv.optim.phase_retrieval import spectral_methods
 from deepinv.physics.compressed_sensing import CompressedSensing
 from deepinv.physics.forward import Physics, LinearPhysics
-from deepinv.physics.structured_random import (
-    compare,
-    generate_diagonal,
-    generate_spectrum,
-    fft1,
-    ifft1,
-    fft2,
-    ifft2,
-    dct1,
-    idct1,
-    dct2,
-    idct2,
-    hadamard1,
-    hadamard2,
-    StructuredRandom,
-)
+from deepinv.physics.structured_random import StructuredRandom
 from deepinv.optim.phase_retrieval import spectral_methods
+
+
+def compare(input_shape: tuple, output_shape: tuple) -> str:
+    r"""
+    Compare input and output shape to determine the sampling mode.
+
+    :param tuple input_shape: Input shape (C, H, W).
+    :param tuple output_shape: Output shape (C, H, W).
+
+    :return: The sampling mode in ["oversampling","undersampling","equisampling].
+    """
+    if input_shape[1] == output_shape[1] and input_shape[2] == output_shape[2]:
+        return "equisampling"
+    elif input_shape[1] <= output_shape[1] and input_shape[2] <= output_shape[2]:
+        return "oversampling"
+    elif input_shape[1] >= output_shape[1] and input_shape[2] >= output_shape[2]:
+        return "undersampling"
+    else:
+        raise ValueError(
+            "Does not support different sampling schemes on height and width."
+        )
 
 
 class PhaseRetrieval(Physics):
@@ -225,15 +231,15 @@ class StructuredRandomPhaseRetrieval(PhaseRetrieval):
         self,
         input_shape: tuple,
         output_shape: tuple,
+        middle_shape: tuple = None,
         n_layers: float = 2,
-        transforms: list = ["fourier2", "fourier2"],
-        diagonal_mode: list = [
+        transforms: list[str] = ["fourier2", "fourier2"],
+        diagonals: list[list[str]] = [
             ["marchenko", "uniform"],
             ["unit", "uniform"],
         ],  # lower index is closer to the input
-        distri_config: dict = dict(),
-        explicit_spectrum: str = "unit",
-        spectrum: torch.Tensor = None,
+        diagonal_config: dict = dict(),
+        spectrum: str | torch.Tensor = "unit",
         pad_powers_of_two=False,
         shared_weights=False,
         dtype=torch.complex64,
@@ -242,98 +248,63 @@ class StructuredRandomPhaseRetrieval(PhaseRetrieval):
         **kwargs,
     ):
         assert math.floor(n_layers) == len(
-            diagonal_mode
+            diagonals
         ), "number of layers doesn't match the number of diagonals"
         assert math.ceil(n_layers) == len(
             transforms
         ), "number of layers doesn't match the number of transforms"
+        assert (
+            n_layers % 1 == 0.5 or n_layers % 1 == 0
+        ), "n_layers must be an integer or an integer plus 0.5"
 
+        # model shape
         self.input_shape = input_shape
         self.output_shape = output_shape
-
         self.mode = compare(input_shape, output_shape)
-
-        for transform in transforms:
-            if "hadamard" in transform:
-                pad_powers_of_two = True
-
-        if pad_powers_of_two is True:
-            middle_size = 2 ** math.ceil(
-                math.log2(max(input_shape[1], output_shape[1]))
-            )
-            self.middle_shape = (1, middle_size, middle_size)
-        elif self.mode == "oversampling":
-            self.middle_shape = self.output_shape
+        if middle_shape is None:
+            for transform in transforms:
+                if "hadamard" in transform:
+                    pad_powers_of_two = True
+            if pad_powers_of_two is True:
+                middle_size = 2 ** math.ceil(
+                    math.log2(max(input_shape[1], output_shape[1]))
+                )
+                self.middle_shape = (1, middle_size, middle_size)
+            elif self.mode == "oversampling":
+                self.middle_shape = self.output_shape
+            else:
+                self.middle_shape = self.input_shape
         else:
-            self.middle_shape = self.input_shape
-
+            self.middle_shape = middle_shape
         if verbose:
             print(f"middle shape: {self.middle_shape}")
 
         self.n = torch.prod(torch.tensor(self.input_shape))
         self.m = torch.prod(torch.tensor(self.output_shape))
         self.oversampling_ratio = self.m / self.n
-        assert (
-            n_layers % 1 == 0.5 or n_layers % 1 == 0
-        ), "n_layers must be an integer or an integer plus 0.5"
         self.n_layers = n_layers
+        self.transforms = transforms
+        self.diagonals = diagonals
+        self.diagonal_config = diagonal_config
+        self.diagonal_config["m"] = self.m
+        self.diagonal_config["n"] = self.n
         self.structure = self.get_structure(self.n_layers)
         self.shared_weights = shared_weights
-        self.transforms = transforms
-
-        self.distri_config = distri_config
-        self.distri_config["m"] = self.m
-        self.distri_config["n"] = self.n
-        self.distri_config["spectrum"] = spectrum
 
         self.dtype = dtype
         self.device = device
 
-        #! spectrum shape will always be the input shape
-        self.spectrum = generate_spectrum(
-            shape=input_shape,
-            mode=explicit_spectrum,
-            config=self.distri_config,
-            dtype=self.dtype,
-            device=self.device,
-            generator=torch.Generator(device=device),
-        )
-
-        # generate diagonal matrices
-        self.diagonals = []
-
-        if isinstance(diagonal_mode, str):
-            diagonal_mode = [diagonal_mode] * math.floor(self.n_layers)
-
-        if not shared_weights:
-            for i in range(math.floor(self.n_layers)):
-                diagonal = generate_diagonal(
-                    self.middle_shape,
-                    mode=diagonal_mode[i],
-                    dtype=self.dtype,
-                    device=self.device,
-                    config=self.distri_config,
-                )
-                self.diagonals.append(diagonal)
-        else:
-            diagonal = generate_diagonal(
-                self.middle_shape,
-                mode=diagonal_mode[0],
-                dtype=self.dtype,
-                device=self.device,
-                config=self.distri_config,
-            )
-            self.diagonals = self.diagonals + [diagonal] * math.floor(self.n_layers)
+        self.spectrum = spectrum
 
         B = StructuredRandom(
-            mode=self.mode,
-            spectrum=self.spectrum,
             input_shape=self.input_shape,
             output_shape=self.output_shape,
             middle_shape=self.middle_shape,
             n_layers=self.n_layers,
+            spectrum=self.spectrum,
             transforms=self.transforms,
             diagonals=self.diagonals,
+            diagonal_config=self.diagonal_config,
             dtype=self.dtype,
             device=self.device,
             **kwargs,
@@ -380,6 +351,7 @@ class StructuredRandomPhaseRetrieval(PhaseRetrieval):
         if n_layers is None:
             n_layers = self.n_layers - 1
         return self.B.get_adversarial(n_layers, trimmed)
+
 
 class PtychographyLinearOperator(LinearPhysics):
     r"""

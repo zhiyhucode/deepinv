@@ -106,7 +106,7 @@ for i in trange(n_oversampling):
             n_layers=n_layers,
             input_shape=(1, img_size, img_size),
             output_shape=(1, output_size, output_size),
-            diagonal_mode=diagonal_mode,
+            diagonals=diagonal_mode,
             dtype=torch.cfloat,
             device=device,
             shared_weights=shared_weights,

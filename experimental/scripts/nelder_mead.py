@@ -72,8 +72,8 @@ def loss(
             input_shape=input_shape,
             output_shape=output_shape,
             n_layers=2,
-            diagonal_mode=[["custom", "uniform"], ["unit", "uniform"]],
-            distri_config={"diagonal": diagonal},
+            diagonals=[["custom", "uniform"], ["unit", "uniform"]],
+            diagonal_config={"diagonal": diagonal},
             device=device,
         )
         y = physics(img)
