@@ -544,8 +544,8 @@ class StructuredRandom(LinearPhysics):
     :param tuple input_shape: input shape. If (C, H, W), i.e., the input is a 2D signal with C channels, then zero-padding will be used for oversampling and cropping will be used for undersampling.
     :param tuple output_shape: shape of outputs.
     :param float n_layers: number of layers :math:`N`. If ``layers=N + 0.5``, a first :math`F` transform is included, ie :math:`A(x)=|\prod_{i=1}^N (F D_i) F x|^2`. Default is 1.
-    :param function transform_func: structured transform function. Default is :meth:`deepinv.physics.structured_random.dst1`.
-    :param function transform_func_inv: structured inverse transform function. Default is :meth:`deepinv.physics.structured_random.dst1`.
+    :param list transforms: transform functions for each layer.
+    :param list transform_invs: inverse transform for each layer.
     :param list diagonals: list of diagonal matrices. If None, a random :math:`{-1,+1}` mask matrix will be used. Default is None.
     :param str device: device of the physics. Default is 'cpu'.
     :param torch.Generator rng: Random number generator. Default is None.
@@ -761,14 +761,16 @@ class StructuredRandom(LinearPhysics):
 
         assert (
             n_layers <= self.n_layers
-        ), f"n_layers should be less than or equal to {self.n_layers}"
+        ), f"n_layers should be no greater than to {self.n_layers}"
+        assert (
+            self.n_layers - math.floor(self.n_layers) == 0.0
+        ), "currently only support integer number of layers"
 
         x = padding(x, self.input_shape, self.middle_shape)
 
         for i in range(math.floor(n_layers)):
-            diagonal = self.diagonals[i]
-            x = diagonal * x
-            x = self.transform_func(x)
+            x = self.diagonals[i] * x
+            x = self.transforms[i](x)
 
         return x
 
@@ -780,7 +782,7 @@ class StructuredRandom(LinearPhysics):
 
         assert (
             n_layers <= self.n_layers
-        ), f"n_layers should be less than or equal to {self.n_layers}"
+        ), f"n_layers should be no greater than {self.n_layers}"
         assert (
             self.n_layers - math.floor(self.n_layers) == 0.0
         ), "currently only support integer number of layers"
