@@ -1,5 +1,5 @@
 general:
-  name: "structured_cosine_padded_marchenko"
+  name: "structured_fourier_padded_marchenko"
   recon: "spec"
   save: True
   verbose: False
@@ -21,7 +21,7 @@ model:
     config:
       #degree_of_freedom: 30
       #radius: 0.8
-  transforms: ["cosine2","cosine2"] # 'fourier', 'cosine', 'hadamard' + dimension
+  transforms: ["fourier2","fourier2"] # 'fourier', 'cosine', 'hadamard' + dimension
   pad_powers_of_two: True
   shared_weights: False
 
