@@ -1,5 +1,5 @@
 general:
-  name: "structured_marchenko_quartic"
+  name: "structured_marchenko_square"
   recon: "spec"
   save: True
   verbose: False
@@ -14,14 +14,14 @@ model:
   spectrum:
     mode: "unit"
     product: 4
-  n_layers: 4
+  n_layers: 2
   diagonals:
     #! left one is closer to the input
-    mode: [['marchenko','uniform'],['marchenko','uniform'],['marchenko','uniform'],['marchenko','uniform']] # mag: 'unit', 'marchenko', phase: 'uniform', 'laplace', 'quadrant'
+    mode: [['marchenko','uniform'],['marchenko','uniform']] # mag: 'unit', 'marchenko', phase: 'uniform', 'laplace', 'quadrant'
     config:
       #degree_of_freedom: 30
       #radius: 0.8
-  transforms: ["fourier2","fourier2","fourier2","fourier2"] # 'fourier', 'cosine', 'hadamard' + dimension
+  transforms: ["fourier2","fourier2"] # 'fourier', 'cosine', 'hadamard' + dimension
   pad_powers_of_two: False
   shared_weights: False
 
