@@ -129,7 +129,7 @@ def padding(tensor: torch.Tensor, input_shape: tuple, output_shape: tuple):
     :param tuple input_shape: shape of the input tensor.
     :param tuple output_shape: shape of the output tensor.
 
-    :return: (torch.Tensor) the zero-padded tensor.
+    :return: (:class:`torch.Tensor`) the zero-padded tensor.
     """
     assert (
         tensor.shape[-3:] == input_shape
@@ -156,7 +156,7 @@ def trimming(tensor: torch.Tensor, input_shape: tuple, output_shape: tuple):
     :param tuple input_shape: shape of the input tensor.
     :param tuple output_shape: shape of the output tensor.
 
-    :return: (torch.Tensor) the trimmed tensor.
+    :return: (:class:`torch.Tensor`) the trimmed tensor.
     """
     assert (
         tensor.shape[-3:] == input_shape

@@ -111,7 +111,7 @@ def default_preprocessing(y, physics):
         \max(1 - 1/y, -5).
 
     :param torch.Tensor y: Measurements.
-    :param deepinv.physics physics: Instance of the physics modeling the forward matrix.
+    :param deepinv.physics.Physics physics: Instance of the physics modeling the forward matrix.
 
     :return: The preprocessing function values evaluated at y.
     """
@@ -236,13 +236,13 @@ def spectral_methods(
         \end{equation*}
   
     :param torch.Tensor y: Measurements.
-    :param deepinv.physics physics: Instance of the physics modeling the forward matrix.
+    :param deepinv.physics.Physics physics: Instance of the physics modeling the forward matrix.
     :param torch.Tensor x: Initial guess for the signals :math:`x_0`.
     :param int n_iter: Number of iterations.
-    :param function preprocessing: Function to preprocess the measurements. Default is :math:`\max(1 - 1/x, -5)`.
+    :param Callable preprocessing: Function to preprocess the measurements. Default is :math:`\max(1 - 1/x, -5)`.
     :param float lamb: Regularization parameter. Default is 10.
     :param bool log: Whether to log the metrics. Default is False.
-    :param function log_metric: Metric to log. Default is cosine similarity.
+    :param Callable log_metric: Metric to log. Default is cosine similarity.
     :param bool early_stop: Whether to early stop the iterations. Default is True.
     :param float rtol: Relative tolerance for early stopping. Default is 1e-5.
     :param bool verbose: If True, prints information in case of an early stop. Default is False.
