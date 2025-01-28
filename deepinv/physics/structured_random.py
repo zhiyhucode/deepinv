@@ -659,6 +659,9 @@ class StructuredRandom(LinearPhysics):
             else:
                 raise ValueError(f"Unimplemented transform: {transform}")
 
+        #* construct forward matrix
+        self.get_forward_matrix(transforms)
+
         # forward operator
         def A(x):
 
@@ -709,7 +712,7 @@ class StructuredRandom(LinearPhysics):
 
         super().__init__(A=A, A_adjoint=A_adjoint, **kwargs)
 
-    def get_forward_matrix(self, verbose=False):
+    def get_forward_matrix(self, transforms, verbose=False):
         """Given the structure of the operator, return the forward matrix."""
         if not hasattr(self, "forward_matrix"):
             m = np.prod(self.output_shape)
@@ -718,14 +721,16 @@ class StructuredRandom(LinearPhysics):
 
             if verbose:
                 print("computing transform matrix")
-            if "fourier" in self.transform:
-                transform_matrix = dft_matrix(p, self.dtype, self.device)
-            elif "cosine" in self.transform:
-                transform_matrix = dct_matrix(p, self.dtype, self.device)
-            elif "hadamard" in self.transform:
-                transform_matrix = hadamard_matrix(p, self.dtype, self.device)
-            else:
-                raise ValueError(f"Unsupported transform: {self.transform}")
+            transform_matrices = []
+            for transform in transforms:
+                if "fourier" in transform:
+                    transform_matrices.append(dft_matrix(p, self.dtype, self.device))
+                elif "cosine" in transform:
+                    transform_matrices.append(dct_matrix(p, self.dtype, self.device))
+                elif "hadamard" in transform:
+                    transform_matrices.append(hadamard_matrix(p, self.dtype, self.device))
+                else:
+                    raise ValueError(f"Unsupported transform: {transform}")
 
             mat = torch.eye(n).to(self.dtype).to(self.device)
             if verbose:
@@ -733,11 +738,14 @@ class StructuredRandom(LinearPhysics):
             mat = oversampling_matrix(p, n, dtype=self.dtype, device=self.device) @ mat
             if verbose:
                 print("computing transform")
+            counter = 0
             if self.n_layers - math.floor(self.n_layers) == 0.5:
-                mat = transform_matrix @ mat
+                mat = transform_matrices[counter] @ mat
+                counter += 1
             for i in range(math.floor(self.n_layers)):
-                mat = diagonal_matrix(self.diagonals[i].flatten()) @ mat
-                mat = transform_matrix @ mat
+                mat = diagonal_matrix(self.diagonals[i].flatten(),device=self.device) @ mat
+                mat = transform_matrices[counter] @ mat
+                counter += 1
             if verbose:
                 print("computing undersampling")
             mat = subsampling_matrix(m, p, dtype=self.dtype, device=self.device) @ mat
