@@ -73,9 +73,6 @@ if save:
     res_name = config["save"]["name"].format(
         model_name=model_name,
         structure=structure,
-        # keep 4 digits of the following numbers
-        # oversampling_start=np.round(oversampling_ratios[0].numpy(), 4),
-        # oversampling_end=np.round(oversampling_ratios[-1].numpy(), 4),
         recon=recon,
     )
     print("res_name:", res_name)
