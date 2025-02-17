@@ -344,7 +344,6 @@ def plot_error_bars(
     for i, (oversampling, data, label) in enumerate(
         zip(oversamplings, datasets, labels)
     ):
-        print(label)
         data = data.copy()
 
         if plot == "reconstruction":
@@ -376,8 +375,7 @@ def plot_error_bars(
             linestyle = "--"
         else:
             linestyle = "-"
-
-        print(color, label)
+        
         # Calculate statistics
         if type(data) == torch.Tensor:
             std_vals = data.std(dim=1).numpy()
