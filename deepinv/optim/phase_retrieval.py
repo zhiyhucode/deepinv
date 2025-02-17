@@ -66,8 +66,8 @@ def generate_signal(
             phase = torch.rand(shape, device=device)
         elif mode[1] == "delta":
             phase = torch.zeros(shape, device=device)
-            # randomly select one element of phase and set it to 1
-            idx = tuple(np.random.randint(0, s) for s in shape)
+            # select the middle element and set it to 1
+            idx = tuple(x // 2 for x in shape)
             phase[idx] = 1
         elif mode[1] == "constant":
             phase = torch.zeros(shape, dtype=dtype, device=device)

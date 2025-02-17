@@ -38,7 +38,6 @@ signal_mode = config["signal"]["mode"]
 signal_config = config["signal"]["config"]
 if signal_config is None:
     signal_config = {}
-print("signal_config:", signal_config)
 
 # model
 img_size = config["signal"]["shape"][-1]
