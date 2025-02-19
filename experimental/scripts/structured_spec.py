@@ -177,6 +177,8 @@ for i in trange(n_oversampling):
         # save results
         if save:
             df_res.to_csv(SAVE_DIR / res_name)
+        
+        physics.release_memory()
     last_oversampling_ratio = oversampling_ratio
 
 if save:
