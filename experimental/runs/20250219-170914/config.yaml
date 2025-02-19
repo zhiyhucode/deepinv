@@ -1,12 +1,12 @@
 general:
-  name: "fdfd_random"
+  name: "fdfd_constant"
   recon: "spec"
   save: True
   verbose: False
 
 signal:
   shape: [1,1,64,64]
-  mode: ["unit","random"] #["delta","constant"]
+  mode: ["unit","constant"] #["delta","constant"]
   config:
     n_layers: 0
 
