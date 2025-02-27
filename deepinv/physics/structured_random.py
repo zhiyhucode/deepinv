@@ -626,7 +626,7 @@ class StructuredRandom(LinearPhysics):
             else:
                 raise ValueError(f"Unimplemented transform: {transform}")
 
-        #* construct forward matrix
+        # * construct forward matrix
         if compute_forward_matrix:
             self.get_forward_matrix(transforms)
 
@@ -696,7 +696,9 @@ class StructuredRandom(LinearPhysics):
                 elif "cosine" in transform:
                     transform_matrices.append(dct_matrix(p, self.dtype, self.device))
                 elif "hadamard" in transform:
-                    transform_matrices.append(hadamard_matrix(p, self.dtype, self.device))
+                    transform_matrices.append(
+                        hadamard_matrix(p, self.dtype, self.device)
+                    )
                 else:
                     raise ValueError(f"Unsupported transform: {transform}")
 
@@ -711,7 +713,10 @@ class StructuredRandom(LinearPhysics):
                 mat = transform_matrices[counter] @ mat
                 counter += 1
             for i in range(math.floor(self.n_layers)):
-                mat = diagonal_matrix(self.diagonals[i].flatten(),device=self.device) @ mat
+                mat = (
+                    diagonal_matrix(self.diagonals[i].flatten(), device=self.device)
+                    @ mat
+                )
                 mat = transform_matrices[counter] @ mat
                 counter += 1
             if verbose:

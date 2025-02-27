@@ -343,7 +343,7 @@ class StructuredRandomPhaseRetrieval(PhaseRetrieval):
         :return: (torch.Tensor) the singular values.
         """
         return self.B.get_singular_values()
-    
+
     def get_forward_matrix(self):
         r"""Returns the forward matrix.
 

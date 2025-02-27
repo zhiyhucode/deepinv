@@ -14,7 +14,6 @@ import torch
 from deepinv.utils.demo import load_url_image, get_image_url
 
 
-
 def generate_signal(
     shape,
     mode: tuple[str, str] = ("unit", "shepp-logan"),
@@ -74,6 +73,7 @@ def generate_signal(
             if transform == "reverse":
                 phase = 1 - phase
             elif transform == "permute":
+
                 def permute(arr: torch.tensor) -> torch.tensor:
                     # Step 1: Create a permutation for values in range [0, 255]
                     permuted_values = np.random.permutation(256)
@@ -85,6 +85,7 @@ def generate_signal(
                     permuted_array = np.vectorize(value_mapping.get)(arr.cpu() * 255)
 
                     return torch.from_numpy(permuted_array) / 255
+
                 phase = permute(phase)
             elif transform == "noise":
                 phase = (
@@ -376,7 +377,7 @@ def plot_error_bars(
             linestyle = "--"
         else:
             linestyle = "-"
-        
+
         # Calculate statistics
         if type(data) == torch.Tensor:
             std_vals = data.std(dim=1).numpy()
