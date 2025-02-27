@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from functools import partial
 import math
+from typing import Optional
 
 from fast_hadamard_transform import hadamard_transform
 import numpy as np
@@ -14,10 +15,12 @@ from deepinv.optim.phase_retrieval import generate_signal
 
 class Distribution(ABC):
     def __init__(self):
+        self.min_supp: float
+        self.max_supp: float
         self.max_pdf = None
 
     @abstractmethod
-    def pdf(self, x):
+    def pdf(self, x) -> np.ndarray:
         pass
 
     def sample(self, shape: tuple[int, ...]) -> np.ndarray:
@@ -37,20 +40,20 @@ class Distribution(ABC):
 
 
 class MarchenkoPastur(Distribution):
-    def __init__(self, m, n, sigma=None):
-        self.m = np.array(m)
-        self.n = np.array(n)
+    def __init__(self, m: int, n: int, sigma=None):
+        self.m = m
+        self.n = n
         # when oversampling ratio is 1, the distribution has min support at 0, leading to a very high peak near 0 and numerical issues.
-        self.gamma = np.array(n / m)
+        self.gamma = n / m
         if sigma is not None:
-            self.sigma = np.array(sigma)
+            self.sigma = sigma
         else:
             # automatically set sigma to make E[|x|^2] = 1
             # self.sigma = (1+self.gamma)**(-0.25)
             self.sigma = 1
         self.lamb = m / n
-        self.min_supp = np.array(self.sigma**2 * (1 - np.sqrt(self.gamma)) ** 2)
-        self.max_supp = np.array(self.sigma**2 * (1 + np.sqrt(self.gamma)) ** 2)
+        self.min_supp = self.sigma**2 * (1 - math.sqrt(self.gamma)) ** 2
+        self.max_supp = self.sigma**2 * (1 + math.sqrt(self.gamma)) ** 2
         super().__init__()
 
     def pdf(self, x: np.ndarray) -> np.ndarray:
@@ -62,14 +65,14 @@ class MarchenkoPastur(Distribution):
         )
 
     def sample(
-        self, shape: tuple[int, ...], include_zero=False, equisampling=False
+        self, shape, include_zero=False, equisampling=False
     ) -> np.ndarray:
         """using acceptance-rejection sampling if oversampling ratio is more than 1, otherwise using the eigenvalues sampled from a real matrix"""
         if self.m < self.n:
             # there will be n - m zero eigenvalues, the rest nonzero eigenvalues follow the Marchenko-Pastur distribution
             if include_zero is True:
-                n_zeros = int(np.product(shape) / self.n * (self.n - self.m))
-                nonzeros = super().sample((np.product(shape) - n_zeros,))
+                n_zeros = int(np.prod(shape) / self.n * (self.n - self.m))
+                nonzeros = super().sample((np.prod(shape) - n_zeros,))
                 zeros = np.zeros(n_zeros)
                 return np.random.permutation(np.concatenate((nonzeros, zeros))).reshape(
                     shape
@@ -157,7 +160,7 @@ def trimming(tensor: torch.Tensor, input_shape: tuple, output_shape: tuple):
 def generate_diagonal(
     shape: tuple[int, ...],
     mode,
-    config: dict = None,
+    config: Optional[dict] = None,
     dtype=torch.complex64,
     device="cpu",
     generator=torch.Generator("cpu"),
@@ -244,10 +247,10 @@ def generate_diagonal(
 def generate_spectrum(
     shape: tuple[int, ...],
     mode: str,
-    config: dict = None,
+    config: Optional[dict] = None,
     dtype=torch.complex64,
     device="cpu",
-    generator=torch.Generator("cpu"),
+    generator: Optional[torch.Generator]=torch.Generator("cpu"),
 ):
     if mode == "unit":
         spectrum = torch.ones(shape, dtype=dtype)
@@ -381,7 +384,6 @@ def hadamard1(x):
 
 
 def hadamard2(x):
-
     assert x.dim() >= 2, "Input tensor must have shape (..., H, W)"
     *_, h, w = x.shape
 
@@ -467,7 +469,7 @@ def subsampling_matrix(
 
 
 def diagonal_matrix(
-    diag: torch.tensor, dtype=torch.complex64, device="cpu"
+    diag: torch.Tensor, dtype=torch.complex64, device="cpu"
 ) -> torch.Tensor:
     """Given a torch tensor, construct a diagonal matrix with the tensor as the diagonal"""
 
@@ -521,7 +523,7 @@ class StructuredRandom(LinearPhysics):
         self,
         input_shape: tuple,
         output_shape: tuple,
-        middle_shape: tuple = None,
+        middle_shape: Optional[tuple] = None,
         n_layers=1,
         spectrum=None,
         transforms=["dst1"],
@@ -531,10 +533,9 @@ class StructuredRandom(LinearPhysics):
         compute_forward_matrix=False,
         dtype=torch.complex64,
         device="cpu",
-        rng: torch.Generator = None,
+        rng: Optional[torch.Generator] = None,
         **kwargs,
     ):
-
         self.input_shape = input_shape
         self.middle_shape = middle_shape
         self.output_shape = output_shape
@@ -632,7 +633,6 @@ class StructuredRandom(LinearPhysics):
 
         # forward operator
         def A(x):
-
             assert (
                 x.shape[1:] == self.input_shape
             ), f"x doesn't have the correct shape {x.shape[1:]} != {self.input_shape}"
@@ -657,7 +657,6 @@ class StructuredRandom(LinearPhysics):
             return x
 
         def A_adjoint(y):
-
             assert (
                 y.shape[1:] == self.output_shape
             ), f"y doesn't have the correct shape {y.shape[1:]} != {self.output_shape}"
