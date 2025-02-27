@@ -97,6 +97,7 @@ else:
         shape=shape,
         mode=signal_mode,
         config=signal_config,
+        phase_range=(0, 2 * torch.pi),
         dtype=torch.complex64,
         device=device,
     )

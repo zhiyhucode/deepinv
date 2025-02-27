@@ -36,22 +36,6 @@ class Distribution(ABC):
         return np.array(samples).reshape(shape)
 
 
-def triangular_distribution(a, size):
-    u = torch.rand(size)  # Sample from uniform distribution [0, 1]
-
-    # Apply inverse transform method for triangular distribution
-    condition = u < 0.5
-    samples = torch.zeros(size)
-
-    # Left part of the triangular distribution
-    samples[condition] = -a + torch.sqrt(u[condition] * 2 * a**2)
-
-    # Right part of the triangular distribution
-    samples[~condition] = a - torch.sqrt((1 - u[~condition]) * 2 * a**2)
-
-    return samples
-
-
 class MarchenkoPastur(Distribution):
     def __init__(self, m, n, sigma=None):
         self.m = np.array(m)
@@ -108,17 +92,6 @@ class MarchenkoPastur(Distribution):
 
     def var(self):
         return self.gamma * self.sigma**4
-
-
-class SemiCircle(Distribution):
-    def __init__(self, radius):
-        self.radius = radius
-        self.min_supp = 1 - radius
-        self.max_supp = 1 + radius
-        super().__init__()
-
-    def pdf(self, x):
-        return 2 / (np.pi * self.radius**2) * np.sqrt(self.radius**2 - (x - 1) ** 2)
 
 
 def padding(tensor: torch.Tensor, input_shape: tuple, output_shape: tuple):
@@ -214,11 +187,6 @@ def generate_diagonal(
             diag = scale * (
                 student_t_dist.sample(shape) + 1j * student_t_dist.sample(shape)
             )
-        elif mode == "triangular":
-            #! variance = a^2/6 for real numbers
-            real = triangular_distribution(torch.sqrt(torch.tensor(3)), shape)
-            imag = triangular_distribution(torch.sqrt(torch.tensor(3)), shape)
-            diag = real + 1j * imag
         else:
             raise ValueError(f"Unsupported mode: {mode}")
     elif isinstance(mode, list):
@@ -240,8 +208,6 @@ def generate_diagonal(
                 )
             ).to(dtype)
             mag = torch.sqrt(mag)
-        elif mode[0] == "semicircle":
-            mag = torch.from_numpy(SemiCircle(config["radius"]).sample(shape)).to(dtype)
         elif mode[0] == "custom":
             mag = torch.sqrt(config["diagonal"])
         elif mode[0] == "cauchy":

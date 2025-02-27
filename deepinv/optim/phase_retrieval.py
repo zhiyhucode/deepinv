@@ -1,4 +1,8 @@
-import os
+"""
+This file contains utility functions for phase retrieval.
+
+It includes functions for generating phase signals, reconstruction and evaluation.
+"""
 
 from matplotlib.patches import Patch
 import matplotlib.pyplot as plt
@@ -6,22 +10,9 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 import torch
-import yaml
 
 from deepinv.utils.demo import load_url_image, get_image_url
 
-
-def permute(arr: torch.tensor) -> torch.tensor:
-    # Step 1: Create a permutation for values in range [0, 255]
-    permuted_values = np.random.permutation(256)
-
-    # Step 2: Create a mapping from original values to permuted values
-    value_mapping = {i: permuted_values[i] for i in range(256)}
-
-    # Step 3: Apply the mapping to the original array
-    permuted_array = np.vectorize(value_mapping.get)(arr.cpu() * 255)
-
-    return torch.from_numpy(permuted_array) / 255
 
 
 def generate_signal(
@@ -83,6 +74,17 @@ def generate_signal(
             if transform == "reverse":
                 phase = 1 - phase
             elif transform == "permute":
+                def permute(arr: torch.tensor) -> torch.tensor:
+                    # Step 1: Create a permutation for values in range [0, 255]
+                    permuted_values = np.random.permutation(256)
+
+                    # Step 2: Create a mapping from original values to permuted values
+                    value_mapping = {i: permuted_values[i] for i in range(256)}
+
+                    # Step 3: Apply the mapping to the original array
+                    permuted_array = np.vectorize(value_mapping.get)(arr.cpu() * 255)
+
+                    return torch.from_numpy(permuted_array) / 255
                 phase = permute(phase)
             elif transform == "noise":
                 phase = (
@@ -93,7 +95,6 @@ def generate_signal(
                 raise ValueError("Invalid transform.")
 
         # generate phase signal
-        # the phase is computed as pi*x - 0.5pi, where x is the original image.
         x = mag * torch.exp(
             1j * phase * (phase_range[1] - phase_range[0]) + 1j * phase_range[0]
         ).to(dtype).to(device)
