@@ -245,6 +245,7 @@ class StructuredRandomPhaseRetrieval(PhaseRetrieval):
         spectrum: str | torch.Tensor = "unit",
         pad_powers_of_two=False,
         shared_weights=False,
+        explicit_matrix=False,
         dtype=torch.complex64,
         device="cpu",
         verbose=False,
@@ -308,13 +309,14 @@ class StructuredRandomPhaseRetrieval(PhaseRetrieval):
             transforms=self.transforms,
             diagonals=self.diagonals,
             diagonal_config=self.diagonal_config,
+            explicit_matrix=explicit_matrix,
             dtype=self.dtype,
             device=self.device,
             **kwargs,
         )
 
         super().__init__(B, **kwargs)
-        self.name = f"Structured Random Phase Retrieval"
+        self.name = "Structured Random Phase Retrieval"
 
     def B_dagger(self, y):
         return self.B.A_adjoint(y)

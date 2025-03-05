@@ -530,7 +530,7 @@ class StructuredRandom(LinearPhysics):
         diagonals=None,
         diagonal_config=None,
         shared_weights=False,
-        compute_forward_matrix=False,
+        explicit_matrix=False,
         dtype=torch.complex64,
         device="cpu",
         rng: Optional[torch.Generator] = None,
@@ -628,7 +628,7 @@ class StructuredRandom(LinearPhysics):
                 raise ValueError(f"Unimplemented transform: {transform}")
 
         # * construct forward matrix
-        if compute_forward_matrix:
+        if explicit_matrix:
             self.get_forward_matrix(transforms)
 
         # forward operator
