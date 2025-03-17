@@ -23,79 +23,96 @@ class Distribution(ABC):
     def pdf(self, x) -> np.ndarray:
         pass
 
-    def sample(self, shape: tuple[int, ...]) -> np.ndarray:
-        # compute the maximum value of the pdf if not yet computed
+    def sample(self, shape: int|tuple[int, ...]) -> np.ndarray:
+        if isinstance(shape, int):
+            shape = (shape,)
+        
+        # empirical maximum if not yet computed
         if self.max_pdf is None:
             self.max_pdf = np.max(
                 self.pdf(np.linspace(self.min_supp + 1e-8, self.max_supp - 1e-8, 10000))
             )
 
-        samples = []
-        while len(samples) < np.prod(shape):
-            x = np.random.uniform(self.min_supp, self.max_supp, size=1)
-            y = np.random.uniform(0, self.max_pdf, size=1)
-            if y < self.pdf(x):
-                samples.append(x)
-        return np.array(samples).reshape(shape)
-
+        n_samples = np.prod(shape)
+        samples = np.empty(0)
+        while samples.shape[0] < n_samples:
+            n_need = int(n_samples - samples.shape)
+            x = np.random.uniform(self.min_supp, self.max_supp, size=n_need)
+            y = np.random.uniform(0, self.max_pdf, size=n_need)
+            accepted = x[np.where(y < self.pdf(x))]
+            if accepted.shape[0] >= n_need:
+                samples = np.append(samples, accepted[:n_need])
+                break
+            else:
+                samples = np.append(samples, accepted)
+        return samples.reshape(shape)
 
 class MarchenkoPastur(Distribution):
-    def __init__(self, m: int, n: int, sigma=None):
-        self.m = m
-        self.n = n
-        # when oversampling ratio is 1, the distribution has min support at 0, leading to a very high peak near 0 and numerical issues.
-        self.gamma = n / m
-        if sigma is not None:
-            self.sigma = sigma
-        else:
-            # automatically set sigma to make E[|x|^2] = 1
-            # self.sigma = (1+self.gamma)**(-0.25)
-            self.sigma = 1
-        self.lamb = m / n
+    """
+    Marchenko-Pastur distribution.
+
+    It describes the asymptotic eigenvalue distribution of the matrix X = 1/sqrt(m) A^T A, where A is a matrix of shape m times n and sampled i.i.d. from a distribution with zero mean and variance sigma^2
+    """
+    def __init__(self, alpha:float, sigma:float=1.0):
+        """
+        alpha: oversampling ratio
+        sigma: standard deviation of the element distribution
+        """
+        assert alpha >= 0, 'oversampling ratio must be nonnegative' 
+        assert sigma >= 0, 'standard deviation must be nonnegative'
+        self.alpha = np.array(alpha) # oversampling ratio
+        self.gamma = 1/self.alpha
+        self.sigma = np.array(sigma)
         self.min_supp = self.sigma**2 * (1 - math.sqrt(self.gamma)) ** 2
         self.max_supp = self.sigma**2 * (1 + math.sqrt(self.gamma)) ** 2
         super().__init__()
 
     def pdf(self, x: np.ndarray) -> np.ndarray:
-        assert (x >= self.min_supp).all() and (
-            x <= self.max_supp
-        ).all(), "x is out of the support of the distribution"
+        assert (x >= self.min_supp).all() and (x <= self.max_supp).all(), (
+            "x is out of the support of the distribution"
+        )
+        x = np.array(x)
+
         return np.sqrt((self.max_supp - x) * (x - self.min_supp)) / (
             2 * np.pi * self.sigma**2 * self.gamma * x
         )
 
-    def sample(
-        self, shape, include_zero=False, equisampling=False
-    ) -> np.ndarray:
+    def sample(self,
+               shape,
+               normalized=False,
+               include_zero=True,
+               ) -> np.ndarray:
         """using acceptance-rejection sampling if oversampling ratio is more than 1, otherwise using the eigenvalues sampled from a real matrix"""
-        if self.m < self.n:
-            # there will be n - m zero eigenvalues, the rest nonzero eigenvalues follow the Marchenko-Pastur distribution
+        n_samples = np.prod(shape)
+        if self.alpha < 1.0:
+            # undersampling
+            # there will be zero eigenvalues, the rest nonzero eigenvalues follow the pdf
             if include_zero is True:
-                n_zeros = int(np.prod(shape) / self.n * (self.n - self.m))
-                nonzeros = super().sample((np.prod(shape) - n_zeros,))
+                n_zeros = int(n_samples * (1 - self.alpha))
+                nonzeros = super().sample((n_samples - n_zeros,))
                 zeros = np.zeros(n_zeros)
-                return np.random.permutation(np.concatenate((nonzeros, zeros))).reshape(
-                    shape
-                )
-            elif equisampling:
-                sub_distribution = MarchenkoPastur(self.n, self.n)
-                return sub_distribution.sample(shape)
+                samples = np.random.permutation(np.concatenate((nonzeros, zeros)))
             else:
-                return super().sample(shape)
-        elif self.m == self.n:
-            # compute the eigenvalues from a real matrix and use it as the samples
-            X = 1 / np.sqrt(self.m) * torch.randn((self.m, self.n), dtype=torch.cfloat)
-            eigenvalues_X, _ = torch.linalg.eig(X.conj().T @ X)
-            return np.array(eigenvalues_X).reshape(shape)
+                samples = super().sample((n_samples,))
+        elif self.alpha == 1.0:
+            # equisampling
+            #! The distribution has min support at 0, leading to a very high peak near 0 and difficulty to sample from acceptance-rejection sampling
+            #! Instead, we directly eigenvalue decompose a matrix to get the eigenvalues 
+            X = 1 / np.sqrt(n_samples) * torch.randn((n_samples, n_samples), dtype=torch.cfloat)
+            samples, _ = torch.linalg.eig(X.conj().T @ X)
         else:
-            return super().sample(shape)
+            # oversampling
+            samples = super().sample(shape)
+        if normalized:
+            # normalize the samples such that E[x^2] = 1
+            samples = samples / np.sqrt(1+self.gamma) / (self.sigma**2)
+        return samples.reshape(shape)
 
     def mean(self):
         return self.sigma**2
 
     def var(self):
         return self.gamma * self.sigma**4
-
 
 def padding(tensor: torch.Tensor, input_shape: tuple, output_shape: tuple):
     r"""
@@ -206,8 +223,8 @@ def generate_diagonal(
             mag = mag.to(dtype)
         elif mode[0] == "marchenko":
             mag = torch.from_numpy(
-                MarchenkoPastur(config["m"], config["n"]).sample(
-                    shape, equisampling=False
+                MarchenkoPastur(alpha = config['alpha']).sample(
+                    shape, normalized=True, include_zero=config["include_zero"]
                 )
             ).to(dtype)
             mag = torch.sqrt(mag)
@@ -256,7 +273,7 @@ def generate_spectrum(
         spectrum = torch.ones(shape, dtype=dtype)
     elif mode == "marchenko":
         spectrum = torch.from_numpy(
-            MarchenkoPastur(config["m"], config["n"]).sample(shape, include_zero=True)
+            MarchenkoPastur(alpha = config['alpha']).sample(shape, normalized=True, include_zero=config["include_zero"])
         ).to(dtype)
         spectrum = torch.sqrt(spectrum)
     else:

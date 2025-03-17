@@ -7,7 +7,6 @@ from datetime import datetime
 from pathlib import Path
 import shutil
 
-import numpy as np
 import pandas as pd
 import torch
 from tqdm import trange
@@ -51,6 +50,7 @@ if diagonal_config is None:
 shared_weights = config["model"]["shared_weights"]
 spectrum = config["model"]["spectrum"]["mode"]
 pad_powers_of_two = config["model"]["pad_powers_of_two"]
+include_zero = config["model"]["include_zero"]
 
 # recon
 n_repeats = config["recon"]["n_repeats"]
@@ -155,6 +155,7 @@ for i in trange(n_oversampling):
             spectrum=spectrum,
             pad_powers_of_two=pad_powers_of_two,
             shared_weights=shared_weights,
+            include_zero=include_zero,
             dtype=torch.complex64,
             device=device,
             verbose=verbose,

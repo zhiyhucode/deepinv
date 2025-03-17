@@ -1,7 +1,7 @@
 general:
   name: "fdf_random_2pi"
   recon: "spec"
-  save: True
+  save: False
   verbose: False
 
 signal:
@@ -24,6 +24,7 @@ model:
   transforms: ["fourier2","fourier2"] # 'fourier', 'cosine', 'hadamard' + dimension
   pad_powers_of_two: False
   shared_weights: False
+  include_zero: True
 
 recon:
   series: "arange"

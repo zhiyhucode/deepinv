@@ -246,6 +246,7 @@ class StructuredRandomPhaseRetrieval(PhaseRetrieval):
         pad_powers_of_two=False,
         shared_weights=False,
         explicit_matrix=False,
+        include_zero=True,
         dtype=torch.complex64,
         device="cpu",
         verbose=False,
@@ -290,8 +291,8 @@ class StructuredRandomPhaseRetrieval(PhaseRetrieval):
         self.transforms = transforms
         self.diagonals = diagonals
         self.diagonal_config = diagonal_config
-        self.diagonal_config["m"] = self.m
-        self.diagonal_config["n"] = self.n
+        self.diagonal_config['alpha'] = self.oversampling_ratio
+        self.diagonal_config['include_zero'] = include_zero
         self.structure = self.get_structure(self.n_layers)
         self.shared_weights = shared_weights
 
