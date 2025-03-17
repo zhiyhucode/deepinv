@@ -238,8 +238,8 @@ class StructuredRandomPhaseRetrieval(PhaseRetrieval):
         n_layers: float = 2,
         transforms: list[str] = ["fourier2", "fourier2"],
         diagonals: list[list[str]] = [
-            ["marchenko", "uniform"],
             ["unit", "uniform"],
+            ["marchenko", "uniform"],
         ],  # lower index is closer to the input
         diagonal_config: dict = dict(),
         spectrum: str | torch.Tensor = "unit",
@@ -288,11 +288,12 @@ class StructuredRandomPhaseRetrieval(PhaseRetrieval):
         self.m = torch.prod(torch.tensor(self.output_shape))
         self.oversampling_ratio = self.m / self.n
         self.n_layers = n_layers
-        self.transforms = transforms
-        self.diagonals = diagonals
+        # flip transforms and diagonals order
+        self.transforms = transforms[::-1]
+        self.diagonals = diagonals[::-1]
         self.diagonal_config = diagonal_config
-        self.diagonal_config['alpha'] = self.oversampling_ratio
-        self.diagonal_config['include_zero'] = include_zero
+        self.diagonal_config["alpha"] = self.oversampling_ratio
+        self.diagonal_config["include_zero"] = include_zero
         self.structure = self.get_structure(self.n_layers)
         self.shared_weights = shared_weights
 
