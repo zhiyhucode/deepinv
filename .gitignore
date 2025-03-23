@@ -46,6 +46,7 @@ wandb/
 kernels/
 measurements/
 degradations/
+data/
 datasets/
 tmp/
 sg_execution_times.rst
