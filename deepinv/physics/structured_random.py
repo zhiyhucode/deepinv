@@ -225,10 +225,6 @@ def generate_diagonal(
         #! should be normalized to have E[|x|^2] = 1 if energy conservation
         if mode[0] == "unit":
             mag = torch.ones(shape, dtype=dtype)
-        elif mode[0] == "uniform":
-            # ensure E[|x|^2] = 1
-            mag = torch.sqrt(torch.tensor(3.0)) * torch.rand(shape)
-            mag = mag.to(dtype)
         elif mode[0] == "marchenko":
             mag = torch.from_numpy(
                 MarchenkoPastur(alpha=config["alpha"]).sample(
@@ -238,8 +234,6 @@ def generate_diagonal(
             mag = torch.sqrt(mag)
         elif mode[0] == "custom":
             mag = torch.sqrt(config["diagonal"])
-        elif mode[0] == "cauchy":
-            mag = torch.distributions.cauchy.Cauchy(0, 1).sample(shape).to(dtype)
         else:
             raise ValueError(f"Unsupported magnitude: {mode[0]}")
 

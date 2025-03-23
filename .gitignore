@@ -33,6 +33,9 @@
 examples/*/datasets
 examples/*/results
 examples/*/ckpts
+experimental/figures
+experimental/results
+experimental/runs
 deepinv/version.py
 /saved_models/
 venv
