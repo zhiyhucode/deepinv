@@ -134,7 +134,7 @@ def correct_global_phase(
         Do not mix the order of the reconstructed and original images since this function modifies x_recon in place.
 
 
-        The global phase shift is comptued per image and per channel as:
+        The global phase shift is computed per image and per channel as:
 
         .. math::
             e^{-i \phi} = \frac{\conj{\hat{x}} \cdot x}{|x|^2},

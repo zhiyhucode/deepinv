@@ -429,6 +429,7 @@ def plot_curves(metrics, save_dir=None, show=True):
     """
     # Use the matplotlib config from deepinv
     config_matplotlib()
+    plt.rcParams["text.usetex"] = False
 
     if save_dir:
         save_dir = Path(save_dir)
