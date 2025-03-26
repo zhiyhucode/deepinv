@@ -25,8 +25,10 @@ from deepinv.optim.phase_retrieval import (
 from deepinv.optim.prior import Zero
 from deepinv.physics import RandomPhaseRetrieval
 
-def init_with(y, physics, x_init):
-    return {"est": (x_init, x_init)}
+def init_with(x_init):
+    def func(y, physics):
+        return {"est": (x_init, x_init)}
+    return func
 
 # load config
 config_path = "../config/full_gd_spec.yaml"
@@ -132,7 +134,7 @@ for i in trange(oversampling_ratios.shape[0]):
             max_iter=max_iter,
             verbose=verbose,
             params_algo=params_algo,
-            custom_init=partial(init_with,x_init=x_init),
+            custom_init=init_with(x_init),
         )
         x_gd_spec = model(y, physics, x_gt=x)
 
