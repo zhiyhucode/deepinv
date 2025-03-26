@@ -1,0 +1,45 @@
+general:
+  name: "structured_random"
+  recon: "gd_spec"
+  save: True
+  verbose: False
+
+signal:
+  shape: [1,1,64,64]
+  mode: ["unit","shepp-logan"] #["delta","constant"]
+  config:
+    n_layers: 0
+
+model:
+  spectrum:
+    mode: "unit"
+    product: 1
+  n_layers: 2
+  diagonals:
+    #! in the order of math
+    mode: [['marchenko','uniform'],['unit','uniform']] # mag: 'unit', 'marchenko', phase: 'uniform', 'laplace', 'quadrant'
+    config:
+      #degree_of_freedom: 30
+      #radius: 0.8
+  transforms: ["fourier2","fourier2"] # 'fourier', 'cosine', 'hadamard' + dimension
+  pad_powers_of_two: False
+  shared_weights: False
+  include_zero: True
+
+recon:
+  series: "arange"
+  start: 2
+  end: 194
+  list: []
+  n_repeats: 50
+  max_spec_iter: 5000
+  gd:
+    loss: 'intensity'
+    prior: 'zero'
+    early_stop: True
+    max_iter: 10000
+    spectrum: 'marchenko'
+
+save:
+  path: "../runs"
+  name: "{model_name}_{structure}_{recon}.csv"

@@ -11,6 +11,7 @@ import pandas as pd
 import seaborn as sns
 import torch
 
+import deepinv as dinv
 from deepinv.utils.demo import load_url_image, get_image_url
 
 
@@ -199,6 +200,38 @@ def cosine_similarity(a: torch.Tensor, b: torch.Tensor):
     norm_a = torch.sqrt(torch.dot(a.conj(), a).real)
     norm_b = torch.sqrt(torch.dot(b.conj(), b).real)
     return torch.abs(torch.dot(a.conj(), b)) / (norm_a * norm_b)
+
+
+def compute_lipschitz_constant(
+    x_est: torch.Tensor,
+    y: torch.Tensor,
+    physics,
+    spectrum: str,
+    loss: str,
+):
+    r"""
+    Compute the lipschitz constant of the gradient of a loss function for phase retrieval.
+
+    :param torch.Tensor x_est: Estimated measurements.
+    :param torch.Tensor y: True measurements.
+    :param deepinv.physics.PhaseRetrieval physics: Instance of the physics.
+    :param str spectrum: Spectrum of the forward matrix. Can be 'marchenko' or 'unitary'.
+    :param str loss: loss function. Can be 'intensity' or 'amplitude'.
+    """
+    # compute maximum eigenvalue of A^H A
+    if spectrum == "marchenko":
+        lambda_max = (1 + np.sqrt(1 / physics.oversampling_ratio)) ** 2
+    elif spectrum == "unitary":
+        lambda_max = 1
+    else:
+        raise ValueError(f"Unsupported spectrum: {spectrum}")
+    if loss == "intensity":
+        diag_max = (2 * physics(x_est) - y).abs().max()
+    elif loss == "amplitude":
+        diag_max = (1 - 0.5 * torch.sqrt(y) / torch.sqrt(physics(x_est))).abs().max()
+    else:
+        raise ValueError(f"Unsupported loss: {loss}")
+    return 2 * lambda_max * diag_max
 
 
 def spectral_methods(

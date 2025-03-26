@@ -67,7 +67,6 @@ else:
 oversampling_ratios = output_sizes**2 / img_size**2
 n_oversampling = oversampling_ratios.shape[0]
 
-# save
 if save:
     res_name = config["save"]["name"].format(
         model_name=model_name,
@@ -174,9 +173,7 @@ for i in trange(n_oversampling):
 
         x_spec = spectral_methods(y, physics, n_iter=max_iter)
         df_res.loc[i, f"repeat{j}"] = cosine_similarity(x, x_spec).item()
-        # print the cosine similarity
         print(f"cosine similarity: {df_res.loc[i, f'repeat{j}']}")
-        # save results
         if save:
             df_res.to_csv(SAVE_DIR / res_name)
 
