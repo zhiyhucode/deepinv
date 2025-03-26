@@ -1,3 +1,4 @@
+from functools import partial
 import sys
 import os
 
@@ -20,10 +21,12 @@ from deepinv.optim.phase_retrieval import (
     cosine_similarity,
     generate_signal,
     spectral_methods,
-    spectral_methods_wrapper,
 )
 from deepinv.optim.prior import Zero
 from deepinv.physics import RandomPhaseRetrieval, StructuredRandomPhaseRetrieval
+
+def init_with(y, physics, x_init):
+    return {"est": (x_init, x_init)}
 
 # Load config
 config_path = "../config/structured_gd_spec.yaml"
@@ -78,7 +81,7 @@ elif loss == 'amplitude':
 else:
     raise ValueError(f"Invalid data fidelity: {config['recon']['gd']['loss']}")
 if config['recon']['gd']['prior'] == 'zero':
-    prior = dinv.optim.prior.Zero()
+    prior = Zero()
 else:
     raise ValueError(f"Invalid prior: {config['recon']['gd']['prior']}")
 early_stop = config['recon']['gd']['early_stop']
@@ -191,9 +194,9 @@ for i in trange(n_oversampling):
 
         y = physics(x)
 
-        x_spec = spectral_methods(y, physics, n_iter=max_spec_iter)
+        x_init = spectral_methods(y, physics, n_iter=max_spec_iter)
 
-        step_size = compute_lipschitz_constant(x_spec, y, physics, config['recon']['gd']['spectrum'], loss)
+        step_size = compute_lipschitz_constant(x_init, y, physics, config['recon']['gd']['spectrum'], loss)
         params_algo = {"stepsize": 2 / step_size.item(), "g_params": 0.00}
         model = optim_builder(
             iteration="PGD",
@@ -203,13 +206,13 @@ for i in trange(n_oversampling):
             max_iter=max_iter,
             verbose=verbose,
             params_algo=params_algo,
-            custom_init=spectral_methods_wrapper,
+            custom_init=partial(init_with,x_init=x_init),
         )
-
         x_gd_spec = model(y, physics, x_gt=x)
-        df_res.loc[i, f"repeat{j}"] = cosine_similarity(x, x_gd_spec).item()
 
+        df_res.loc[i, f"repeat{j}"] = cosine_similarity(x, x_gd_spec).item()
         print(f"cosine similarity: {df_res.loc[i, f'repeat{j}']}")
+
         if save:
             df_res.to_csv(SAVE_DIR / res_name)
 

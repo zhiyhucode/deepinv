@@ -1,7 +1,7 @@
 general:
   name: "structured"
-  recon: "gd_spec"
-  save: True
+  recon: "gd_rand"
+  save: False
   verbose: False
 
 signal:
@@ -32,7 +32,6 @@ recon:
   end: 194
   list: []
   n_repeats: 50
-  max_spec_iter: 5000
   gd:
     loss: 'intensity'
     prior: 'zero'

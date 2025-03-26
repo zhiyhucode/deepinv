@@ -7,15 +7,12 @@ from datetime import datetime
 from pathlib import Path
 import shutil
 
-import numpy as np
 import pandas as pd
 import torch
 from tqdm import trange
 import yaml
 
 import deepinv as dinv
-from deepinv.utils.demo import load_url_image, get_image_url
-from deepinv.utils.plotting import plot
 from deepinv.optim.phase_retrieval import (
     cosine_similarity,
     spectral_methods,
@@ -24,7 +21,7 @@ from deepinv.optim.phase_retrieval import (
 from deepinv.physics import RandomPhaseRetrieval
 
 # load config
-config_path = "../config/full_spectral.yaml"
+config_path = "../config/full_spec.yaml"
 with open(config_path, "r") as file:
     config = yaml.safe_load(file)
 
@@ -32,9 +29,7 @@ with open(config_path, "r") as file:
 model_name = config["general"]["name"]
 recon = config["general"]["recon"]
 save = config["general"]["save"]
-
-# model
-img_size = config["signal"]["img_size"]
+img_size = config["signal"]["shape"][-1]
 
 # recon
 n_repeats = config["recon"]["n_repeats"]
@@ -54,12 +49,7 @@ else:
 if save:
     res_name = config["save"]["name"].format(
         model_name=model_name,
-        img_mode=config["signal"]["mode"],
-        # keep 4 digits of the following numbers
-        oversampling_start=np.round(oversampling_ratios[0].numpy(), 4),
-        oversampling_end=np.round(oversampling_ratios[-1].numpy(), 4),
         recon=recon,
-        n_repeats=n_repeats,
     )
     print("res_name:", res_name)
 
@@ -68,6 +58,7 @@ if save:
     SAVE_DIR = SAVE_DIR / current_time
     Path(SAVE_DIR).mkdir(parents=True, exist_ok=True)
     print("save directory:", SAVE_DIR)
+
     # save config
     shutil.copy(config_path, SAVE_DIR / "config.yaml")
     # read-only
@@ -77,7 +68,7 @@ device = dinv.utils.get_freer_gpu() if torch.cuda.is_available() else "cpu"
 
 # Set up the signal to be reconstructed.
 x = generate_signal(
-    shape=img_size,
+    shape=config["signal"]["shape"],
     mode=config["signal"]["mode"],
     config=config["signal"]["config"],
     dtype=torch.complex64,
@@ -87,7 +78,6 @@ x = generate_signal(
 df_res = pd.DataFrame(
     {
         "oversampling_ratio": oversampling_ratios,
-        "step_size": None,
         **{f"repeat{i}": None for i in range(n_repeats)},
     }
 )
