@@ -41,7 +41,6 @@ img_size = config["signal"]["shape"][-1]
 
 # recon
 n_repeats = config["recon"]["n_repeats"]
-max_spec_iter = config["recon"]["max_spec_iter"]
 
 if config["recon"]["series"] == "arange":
     start = config["recon"]["start"]

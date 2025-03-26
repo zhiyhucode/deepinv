@@ -173,6 +173,7 @@ class RandomPhaseRetrieval(PhaseRetrieval):
     ):
         self.m = m
         self.input_shape = img_shape
+        self.oversampling_ratio = m / torch.prod(torch.tensor(img_shape))
         self.channelwise = channelwise
         self.dtype = dtype
         self.device = device

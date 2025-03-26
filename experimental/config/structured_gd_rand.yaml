@@ -1,7 +1,7 @@
 general:
   name: "structured"
   recon: "gd_rand"
-  save: False
+  save: True
   verbose: False
 
 signal:

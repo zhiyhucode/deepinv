@@ -1,7 +1,7 @@
 general:
   name: "full"
   recon: "spec"
-  save: False
+  save: True
   verbose: False
 
 signal:
