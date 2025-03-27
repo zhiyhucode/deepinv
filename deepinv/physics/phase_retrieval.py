@@ -8,7 +8,6 @@ from deepinv.optim.phase_retrieval import spectral_methods
 from deepinv.physics.compressed_sensing import CompressedSensing
 from deepinv.physics.forward import Physics, LinearPhysics
 from deepinv.physics.structured_random import StructuredRandom
-from deepinv.optim.phase_retrieval import spectral_methods
 
 
 def compare(input_shape: tuple, output_shape: tuple) -> str:

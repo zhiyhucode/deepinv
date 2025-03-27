@@ -360,7 +360,7 @@ def plot_error_bars(
     quantiles=[0.10, 0.50, 0.90],
     error_bar_linestyle="--",
     structured_color="red",
-    iid_color="blue",
+    full_color="blue",
     plot="other",
     legend_loc="upper left",
     transparent=True,
@@ -384,8 +384,8 @@ def plot_error_bars(
         if plot == "reconstruction":
             if "structured" in label:
                 color = structured_color
-            elif "iid" in label:
-                color = iid_color
+            elif "full" in label:
+                color = full_color
         elif plot == "layer":
             if "1 layer" in label:
                 color = palette[0]
@@ -478,7 +478,7 @@ def plot_error_bars(
                 plt.Line2D([], [], linestyle="-", color=structured_color),
                 "structured random",
             ),
-            (plt.Line2D([], [], linestyle="-", color=iid_color), "i.i.d. random"),
+            (plt.Line2D([], [], linestyle="-", color=full_color), "i.i.d. random"),
             # (Patch(visible=False), ''),  # spacer
             (Patch(visible=False), r"$\bf{Algorithm}$"),
             (plt.Line2D([], [], linestyle="-", marker=".", color="black"), "GD + SM"),

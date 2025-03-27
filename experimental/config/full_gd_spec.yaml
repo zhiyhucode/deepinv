@@ -1,6 +1,6 @@
 general:
   name: "full"
-  recon: "spec"
+  recon: "gd_spec"
   save: True
   verbose: False
 
