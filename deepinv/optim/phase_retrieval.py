@@ -11,7 +11,6 @@ import pandas as pd
 import seaborn as sns
 import torch
 
-import deepinv as dinv
 from deepinv.utils.demo import load_url_image, get_image_url
 
 

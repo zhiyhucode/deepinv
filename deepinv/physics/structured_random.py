@@ -3,11 +3,15 @@ from functools import partial
 import math
 from typing import Optional
 
-from fast_hadamard_transform import hadamard_transform
 import numpy as np
 import scipy as sp
 from scipy.fft import dct, idct, fft
 import torch
+
+if torch.cuda.is_available():
+    from fast_hadamard_transform import hadamard_transform
+else:
+    from hadamard_transform import hadamard_transform
 
 from deepinv.physics.forward import LinearPhysics
 from deepinv.optim.phase_retrieval import generate_signal
@@ -395,8 +399,12 @@ def hadamard1(x):
     x = x.flatten()
     real = x.real
     imag = x.imag
-    real = hadamard_transform(real, scale=1 / np.sqrt(x.shape[0]))
-    imag = hadamard_transform(imag, scale=1 / np.sqrt(x.shape[0]))
+    if torch.cuda.is_available():
+        real = hadamard_transform(real, scale=1 / np.sqrt(x.shape[0]))
+        imag = hadamard_transform(imag, scale=1 / np.sqrt(x.shape[0]))
+    else:
+        real = hadamard_transform(real)
+        imag = hadamard_transform(imag)
 
     x = real + 1j * imag
     x = torch.reshape(x, shape)
@@ -410,14 +418,19 @@ def hadamard2(x):
 
     real = x.real
     imag = x.imag
-    real = hadamard_transform(
-        hadamard_transform(real, scale=1 / np.sqrt(w)).transpose(-2, -1),
-        scale=1 / np.sqrt(h),
-    ).transpose(-2, -1)
-    imag = hadamard_transform(
-        hadamard_transform(imag, scale=1 / np.sqrt(w)).transpose(-2, -1),
-        scale=1 / np.sqrt(h),
-    ).transpose(-2, -1)
+    # HT always happens on the last dimension
+    if torch.cuda.is_available():
+        real = hadamard_transform(
+            hadamard_transform(real, scale=1 / np.sqrt(w)).transpose(-2, -1),
+            scale=1 / np.sqrt(h),
+        ).transpose(-2, -1)
+        imag = hadamard_transform(
+            hadamard_transform(imag, scale=1 / np.sqrt(w)).transpose(-2, -1),
+            scale=1 / np.sqrt(h),
+        ).transpose(-2, -1)
+    else:
+        real = hadamard_transform(hadamard_transform(real)).transpose(-2, -1).transpose(-2, -1)
+        imag = hadamard_transform(hadamard_transform(imag)).transpose(-2, -1).transpose(-2, -1)
 
     x = real + 1j * imag
 
