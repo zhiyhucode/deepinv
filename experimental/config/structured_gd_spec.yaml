@@ -17,14 +17,14 @@ model:
   n_layers: 2
   diagonals:
     #! in the order of math
-    mode: [['marchenko','uniform'],['unit','uniform']] # mag: 'unit', 'marchenko', phase: 'uniform', 'laplace', 'quadrant'
+    mode: [['unit','uniform'],['marchenko','uniform']] # mag: 'unit', 'marchenko', phase: 'uniform', 'laplace', 'quadrant'
     config:
       #degree_of_freedom: 30
       #radius: 0.8
   transforms: ["fourier2","fourier2"] # 'fourier', 'cosine', 'hadamard' + dimension
   pad_powers_of_two: False
   shared_weights: False
-  include_zero: True
+  include_zero: False
 
 recon:
   series: "arange"
