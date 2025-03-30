@@ -38,7 +38,7 @@ recon:
     prior: 'zero'
     early_stop: True
     max_iter: 10000
-    spectrum: 'marchenko'
+    spectrum: 'marchenko' # to estimate the Lipschitz constant
 
 save:
   path: "../runs"

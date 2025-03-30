@@ -4,7 +4,6 @@ import os
 sys.path.append("/home/zhhu/workspaces/deepinv/")
 
 from datetime import datetime
-from functools import partial
 from pathlib import Path
 import shutil
 

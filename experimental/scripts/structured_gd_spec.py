@@ -198,7 +198,7 @@ for i in trange(n_oversampling):
         x_init = spectral_methods(y, physics, n_iter=max_spec_iter)
 
         step_size = compute_lipschitz_constant(x_init, y, physics, config['recon']['gd']['spectrum'], loss)
-        params_algo = {"stepsize": 1 / step_size.item(), "g_params": 0.00}
+        params_algo = {"stepsize": 2 / step_size.item(), "g_params": 0.00}
         model = optim_builder(
             iteration="PGD",
             prior=prior,
