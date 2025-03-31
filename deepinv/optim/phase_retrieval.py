@@ -3,6 +3,7 @@ This file contains utility functions for phase retrieval.
 
 It includes functions for generating phase signals, reconstruction and evaluation.
 """
+from typing import TypedDict
 
 from matplotlib.patches import Patch
 import matplotlib.pyplot as plt
@@ -209,7 +210,7 @@ def compute_lipschitz_constant(
     loss: str,
 ):
     r"""
-    Compute the lipschitz constant of the gradient of a loss function for phase retrieval.
+    Compute the lipschitz constant of the gradient of a loss function for random phase retrieval.
 
     :param torch.Tensor x_est: Estimated measurements.
     :param torch.Tensor y: True measurements.

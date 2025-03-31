@@ -173,7 +173,7 @@ for i in trange(n_oversampling):
             transforms=transforms,
             diagonals=diagonals,
             diagonal_config=diagonal_config,
-            spectrum=spectrum,
+            manual_spectrum=spectrum,
             pad_powers_of_two=pad_powers_of_two,
             shared_weights=shared_weights,
             include_zero=include_zero,

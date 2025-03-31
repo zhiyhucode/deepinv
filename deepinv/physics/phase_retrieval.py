@@ -10,27 +10,6 @@ from deepinv.physics.forward import Physics, LinearPhysics
 from deepinv.physics.structured_random import StructuredRandom
 
 
-def compare(input_shape: tuple, output_shape: tuple) -> str:
-    r"""
-    Compare input and output shape to determine the sampling mode.
-
-    :param tuple input_shape: Input shape (C, H, W).
-    :param tuple output_shape: Output shape (C, H, W).
-
-    :return: The sampling mode in ["oversampling","undersampling","equisampling].
-    """
-    if input_shape[1] == output_shape[1] and input_shape[2] == output_shape[2]:
-        return "equisampling"
-    elif input_shape[1] <= output_shape[1] and input_shape[2] <= output_shape[2]:
-        return "oversampling"
-    elif input_shape[1] >= output_shape[1] and input_shape[2] >= output_shape[2]:
-        return "undersampling"
-    else:
-        raise ValueError(
-            "Does not support different sampling schemes on height and width."
-        )
-
-
 class PhaseRetrieval(Physics):
     r"""
     Phase Retrieval base class corresponding to the operator
@@ -206,6 +185,27 @@ class RandomPhaseRetrieval(PhaseRetrieval):
         return self.B._A.var() + self.B._A.mean() ** 2
 
 
+def compare(input_shape: tuple, output_shape: tuple) -> str:
+    r"""
+    Compare input and output shape to determine the sampling mode.
+
+    :param tuple input_shape: Input shape (C, H, W).
+    :param tuple output_shape: Output shape (C, H, W).
+
+    :return: The sampling mode in ["oversampling","undersampling","equisampling].
+    """
+    if input_shape[1] == output_shape[1] and input_shape[2] == output_shape[2]:
+        return "equisampling"
+    elif input_shape[1] <= output_shape[1] and input_shape[2] <= output_shape[2]:
+        return "oversampling"
+    elif input_shape[1] >= output_shape[1] and input_shape[2] >= output_shape[2]:
+        return "undersampling"
+    else:
+        raise ValueError(
+            "Does not support different sampling schemes on height and width."
+        )
+
+
 class StructuredRandomPhaseRetrieval(PhaseRetrieval):
     r"""
     Structured random phase retrieval model corresponding to the operator
@@ -240,9 +240,9 @@ class StructuredRandomPhaseRetrieval(PhaseRetrieval):
         diagonals: list[list[str]] = [
             ["unit", "uniform"],
             ["marchenko", "uniform"],
-        ],  # lower index is closer to the input
+        ],  # in the order of math
         diagonal_config: dict = dict(),
-        spectrum: str | torch.Tensor = "unit",
+        manual_spectrum: str | torch.Tensor = "unit",
         pad_powers_of_two=False,
         shared_weights=False,
         explicit_matrix=False,
@@ -261,6 +261,9 @@ class StructuredRandomPhaseRetrieval(PhaseRetrieval):
         assert (
             n_layers % 1 == 0.5 or n_layers % 1 == 0
         ), "n_layers must be an integer or an integer plus 0.5"
+        
+        if manual_spectrum != 'unit':
+            assert (diag[0] == 'unit' for diag in diagonals), "manual spectrum should only be used with unit diagonals"
 
         # model shape
         self.input_shape = input_shape
@@ -300,7 +303,7 @@ class StructuredRandomPhaseRetrieval(PhaseRetrieval):
         self.dtype = dtype
         self.device = device
 
-        self.spectrum = spectrum
+        self.spectrum = manual_spectrum
 
         B = StructuredRandom(
             input_shape=self.input_shape,
