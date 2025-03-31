@@ -217,19 +217,21 @@ def compute_lipschitz_constant(
     :param str spectrum: Spectrum of the forward matrix. Can be 'marchenko' or 'unitary'.
     :param str loss: loss function. Can be 'intensity' or 'amplitude'.
     """
-    # compute maximum eigenvalue of A^H A
+    # compute maximum eigenvalue of A^H@A
     if spectrum == "marchenko":
-        lambda_max = (1 + np.sqrt(1 / physics.oversampling_ratio)) ** 2
+        lambda_max = (1 + np.sqrt(1 / physics.oversampling_ratio)) ** 2 # https://en.wikipedia.org/wiki/Marchenko%E2%80%93Pastur_distribution 
     elif spectrum == "unitary":
         lambda_max = 1
     else:
         raise ValueError(f"Unsupported spectrum: {spectrum}")
+    
     if loss == "intensity":
         diag_max = (2 * physics(x_est) - y).abs().max()
     elif loss == "amplitude":
         diag_max = (1 - 0.5 * torch.sqrt(y) / torch.sqrt(physics(x_est))).abs().max()
     else:
         raise ValueError(f"Unsupported loss: {loss}")
+
     return 2 * lambda_max * diag_max
 
 
