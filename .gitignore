@@ -52,3 +52,4 @@ data/
 datasets/
 tmp/
 sg_execution_times.rst
+.qodo
