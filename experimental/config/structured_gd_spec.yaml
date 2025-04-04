@@ -1,7 +1,7 @@
 general:
   name: "structured"
   recon: "gd_spec"
-  save: True
+  save: False
   verbose: False
 
 signal:

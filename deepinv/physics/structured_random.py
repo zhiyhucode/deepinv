@@ -255,8 +255,8 @@ def generate_diagonal(
             values = torch.tensor([1, -1, 1j, -1j])
             # Randomly select elements from the values with equal probability
             phase = values[torch.randint(0, len(values), shape)]
-        elif mode[1] == 'realistic':
-            phase = torch.tensor(config['realistic_phase'], dtype=dtype)
+        elif mode[1] == "realistic":
+            phase = torch.tensor(config["realistic_phase"], dtype=dtype)
         else:
             raise ValueError(f"Unsupported phase: {mode[1]}")
 

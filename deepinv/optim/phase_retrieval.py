@@ -3,6 +3,7 @@ This file contains utility functions for phase retrieval.
 
 It includes functions for generating phase signals, reconstruction and evaluation.
 """
+
 from typing import TypedDict
 
 from matplotlib.patches import Patch
@@ -220,12 +221,14 @@ def compute_lipschitz_constant(
     """
     # compute maximum eigenvalue of A^H@A
     if spectrum == "marchenko":
-        lambda_max = (1 + np.sqrt(1 / physics.oversampling_ratio)) ** 2 # https://en.wikipedia.org/wiki/Marchenko%E2%80%93Pastur_distribution 
+        lambda_max = (
+            1 + np.sqrt(1 / physics.oversampling_ratio)
+        ) ** 2  # https://en.wikipedia.org/wiki/Marchenko%E2%80%93Pastur_distribution
     elif spectrum == "unitary":
         lambda_max = 1
     else:
         raise ValueError(f"Unsupported spectrum: {spectrum}")
-    
+
     if loss == "intensity":
         diag_max = (2 * physics(x_est) - y).abs().max()
     elif loss == "amplitude":

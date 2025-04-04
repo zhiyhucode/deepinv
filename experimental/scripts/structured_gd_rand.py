@@ -23,10 +23,13 @@ from deepinv.optim.phase_retrieval import (
 from deepinv.optim.prior import Zero
 from deepinv.physics import RandomPhaseRetrieval, StructuredRandomPhaseRetrieval
 
+
 def init_with(x_init):
     def func(y, physics):
         return {"est": (x_init, x_init)}
+
     return func
+
 
 # Load config
 config_path = "../config/structured_gd_rand.yaml"
@@ -72,19 +75,19 @@ elif config["recon"]["series"] == "list":
 else:
     raise ValueError("Invalid series type.")
 
-loss = config['recon']['gd']['loss']
-if loss == 'intensity':
+loss = config["recon"]["gd"]["loss"]
+if loss == "intensity":
     data_fidelity = L2()
-elif loss == 'amplitude':
+elif loss == "amplitude":
     data_fidelity = AmplitudeLoss()
 else:
     raise ValueError(f"Invalid data fidelity: {config['recon']['gd']['loss']}")
-if config['recon']['gd']['prior'] == 'zero':
+if config["recon"]["gd"]["prior"] == "zero":
     prior = Zero()
 else:
     raise ValueError(f"Invalid prior: {config['recon']['gd']['prior']}")
-early_stop = config['recon']['gd']['early_stop']
-max_iter = config['recon']['gd']['max_iter']
+early_stop = config["recon"]["gd"]["early_stop"]
+max_iter = config["recon"]["gd"]["max_iter"]
 
 oversampling_ratios = output_sizes**2 / img_size**2
 n_oversampling = oversampling_ratios.shape[0]
@@ -195,7 +198,9 @@ for i in trange(n_oversampling):
 
         x_init = torch.randn_like(x)
 
-        step_size = compute_lipschitz_constant(x_init, y, physics, config['recon']['gd']['spectrum'], loss)
+        step_size = compute_lipschitz_constant(
+            x_init, y, physics, config["recon"]["gd"]["spectrum"], loss
+        )
         params_algo = {"stepsize": 2 / step_size.item(), "g_params": 0.00}
         model = optim_builder(
             iteration="PGD",

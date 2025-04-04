@@ -261,9 +261,11 @@ class StructuredRandomPhaseRetrieval(PhaseRetrieval):
         assert (
             n_layers % 1 == 0.5 or n_layers % 1 == 0
         ), "n_layers must be an integer or an integer plus 0.5"
-        
-        if manual_spectrum != 'unit':
-            assert (diag[0] == 'unit' for diag in diagonals), "manual spectrum should only be used with unit diagonals"
+
+        if manual_spectrum != "unit":
+            assert (
+                diag[0] == "unit" for diag in diagonals
+            ), "manual spectrum should only be used with unit diagonals"
 
         # model shape
         self.input_shape = input_shape
