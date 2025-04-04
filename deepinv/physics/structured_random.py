@@ -10,8 +10,6 @@ import torch
 
 if torch.cuda.is_available():
     from fast_hadamard_transform import hadamard_transform
-else:
-    from hadamard_transform import hadamard_transform
 
 from deepinv.physics.forward import LinearPhysics
 from deepinv.optim.phase_retrieval import generate_signal
@@ -405,8 +403,7 @@ def hadamard1(x):
         real = hadamard_transform(real, scale=1 / np.sqrt(x.shape[0]))
         imag = hadamard_transform(imag, scale=1 / np.sqrt(x.shape[0]))
     else:
-        real = hadamard_transform(real)
-        imag = hadamard_transform(imag)
+        raise NotImplementedError("Hadamard transform not supported on CPU")
 
     x = real + 1j * imag
     x = torch.reshape(x, shape)
@@ -431,8 +428,7 @@ def hadamard2(x):
             scale=1 / np.sqrt(h),
         ).transpose(-2, -1)
     else:
-        real = hadamard_transform(hadamard_transform(real)).transpose(-2, -1).transpose(-2, -1)
-        imag = hadamard_transform(hadamard_transform(imag)).transpose(-2, -1).transpose(-2, -1)
+        raise NotImplementedError("Hadamard transform not supported on CPU")
 
     x = real + 1j * imag
 

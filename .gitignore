@@ -40,7 +40,7 @@ experimental/results
 experimental/runs
 deepinv/version.py
 /saved_models/
-venv
+.venv
 build
 deepinv.egg-info
 dist
