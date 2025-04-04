@@ -794,7 +794,7 @@ requires-dist = [
     { name = "mat73", marker = "extra == 'dataset'" },
     { name = "matplotlib" },
     { name = "natsort" },
-    { name = "numpy", specifier = "<=1.26.3" },
+    { name = "numpy", specifier = "<2.0" },
     { name = "pandas", specifier = ">=2.2.3" },
     { name = "pandas", marker = "extra == 'dataset'" },
     { name = "ptwt", marker = "extra == 'denoisers'" },
