@@ -24,7 +24,7 @@ model:
   transforms: ["hadamard2","hadamard2"] # 'fourier', 'cosine', 'hadamard' + dimension
   pad_powers_of_two: False
   shared_weights: False
-  include_zero: True
+  include_zero: False # whether to include zero diagonal elements when undersampling 
 
 recon:
   series: "arange"
