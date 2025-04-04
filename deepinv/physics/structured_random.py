@@ -39,12 +39,12 @@ class Distribution(ABC):
 
         n_samples = np.prod(shape)
         samples = np.empty(0)
-        while samples.shape[0] < n_samples:
-            n_need = int(n_samples - samples.shape)
+        while samples.size < n_samples:
+            n_need = int(n_samples - samples.size)
             x = np.random.uniform(self.min_supp, self.max_supp, size=n_need)
             y = np.random.uniform(0, self.max_pdf, size=n_need)
             accepted = x[np.where(y < self.pdf(x))]
-            if accepted.shape[0] >= n_need:
+            if accepted.size >= n_need:
                 samples = np.append(samples, accepted[:n_need])
                 break
             else:
@@ -257,6 +257,8 @@ def generate_diagonal(
             values = torch.tensor([1, -1, 1j, -1j])
             # Randomly select elements from the values with equal probability
             phase = values[torch.randint(0, len(values), shape)]
+        elif mode[1] == 'realistic':
+            phase = torch.tensor(config['realistic_phase'], dtype=dtype)
         else:
             raise ValueError(f"Unsupported phase: {mode[1]}")
 
