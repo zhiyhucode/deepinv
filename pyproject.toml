@@ -35,6 +35,7 @@ dependencies = [
     "pandas>=2.2.3",
     "seaborn>=0.13.2",
     "ipykernel>=6.29.5",
+    "fast-hadamard-transform>=1.0.4.post1",
 ]
 
 [tool.setuptools]
