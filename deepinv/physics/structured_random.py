@@ -805,19 +805,19 @@ class StructuredRandom(LinearPhysics):
 
         return y
 
-    def get_adversarial(self, n_layers=None, trimmed=True) -> torch.Tensor:
+    def get_adversarial(self, n_layers=None, trimmed=True, mag='delta') -> torch.Tensor:
         """returns the closest input to the signal which yields the measuremnts as a delta signal"""
 
         if n_layers is None:
             n_layers = self.n_layers
 
-        delta = generate_signal(
+        adver_out = generate_signal(
             (1,) + self.middle_shape,
-            mode=["delta", "constant"],
+            mode=[mag, "constant"],
             dtype=self.dtype,
             device=self.device,
         )
-        adver = self.partial_inverse(delta, n_layers)
+        adver = self.partial_inverse(adver_out, n_layers)
 
         if trimmed is True:
             return trimming(adver, self.middle_shape, self.input_shape)

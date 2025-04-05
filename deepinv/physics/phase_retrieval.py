@@ -366,10 +366,10 @@ class StructuredRandomPhaseRetrieval(PhaseRetrieval):
     def partial_inverse(self, y, n_layers):
         return self.B.partial_inverse(y, n_layers)
 
-    def get_adversarial(self, n_layers=None, trimmed=True):
+    def get_adversarial(self, n_layers=None, trimmed=True, mag="delta"):
         if n_layers is None:
             n_layers = self.n_layers - 1
-        return self.B.get_adversarial(n_layers, trimmed)
+        return self.B.get_adversarial(n_layers, trimmed, mag)
 
 
 class PtychographyLinearOperator(LinearPhysics):
