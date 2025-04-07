@@ -38,6 +38,8 @@ dependencies = [
     #"fast-hadamard-transform>=1.0.4.post1",
     "black>=25.1.0",
     "ruff>=0.11.3",
+    "jupyter>=1.1.1",
+    "ipywidgets>=8.1.5",
 ]
 
 [tool.setuptools]
