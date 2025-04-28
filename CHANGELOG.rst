@@ -16,6 +16,7 @@ Changed
 
 Fixed
 ^^^^^
+- Fix latex rendering in `deepinv.utils.plotting.config_matplotlib`  (:gh:`452` by `Romain Vo`_)
 
 
 v0.3
@@ -55,6 +56,7 @@ Fixed
 - Trainer discards checkpoint after loading (:gh:`385` by `Andrew Wang`_)
 - Fix offline training with noise generator not updating noise params (:gh:`414` by `Andrew Wang`_)
 - Fix wrong reference link in auto examples (:gh:`432` by `Minh Hai Nguyen`_)
+- Fix paths in LidcIdriSliceDataset (:gh:`446` by `Jérémy Scanvic`_)
 
 Changed
 ^^^^^^^
@@ -316,3 +318,4 @@ Authors
 .. _Pierre-Antoine Comby: https://github.com/paquiteau
 .. _Victor Sechaud: https://github.com/vsechaud
 .. _Sebastian Neumayer: https://www.tu-chemnitz.de/mathematik/invimg/index.en.php
+.. _Romain Vo: https://github.com/romainvo
