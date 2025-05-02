@@ -19,17 +19,11 @@ from deepinv.optim.phase_retrieval import (
     compute_lipschitz_constant,
     cosine_similarity,
     generate_signal,
+    init_with,
     spectral_methods,
 )
 from deepinv.optim.prior import Zero
 from deepinv.physics import RandomPhaseRetrieval, StructuredRandomPhaseRetrieval
-
-
-def init_with(x_init):
-    def func(y, physics):
-        return {"est": (x_init, x_init)}
-
-    return func
 
 
 # Load config

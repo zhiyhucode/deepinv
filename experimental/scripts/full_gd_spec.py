@@ -20,16 +20,10 @@ from deepinv.optim.phase_retrieval import (
     cosine_similarity,
     generate_signal,
     spectral_methods,
+    init_with,
 )
 from deepinv.optim.prior import Zero
 from deepinv.physics import RandomPhaseRetrieval
-
-
-def init_with(x_init):
-    def func(y, physics):
-        return {"est": (x_init, x_init)}
-
-    return func
 
 
 # load config

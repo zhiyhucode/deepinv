@@ -15,6 +15,11 @@ import torch
 
 from deepinv.utils.demo import load_url_image, get_image_url
 
+def init_with(x_init):
+    def func(y, physics):
+        return {"est": (x_init, x_init)}
+
+    return func
 
 def generate_signal(
     shape,
