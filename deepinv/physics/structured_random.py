@@ -124,13 +124,14 @@ class MarchenkoPastur(Distribution):
         return self.gamma * self.sigma**4
 
 
-def padding(tensor: torch.Tensor, input_shape: tuple, output_shape: tuple):
+@_deprecated_alias(input_shape="img_size", output_shape="output_size")
+def padding(tensor: torch.Tensor, img_size: tuple, output_size: tuple):
     r"""
     Zero padding function for oversampling in structured random phase retrieval.
 
     :param torch.Tensor tensor: input tensor.
-    :param tuple input_shape: shape of the input tensor.
-    :param tuple output_shape: shape of the output tensor.
+    :param tuple img_size: shape of the input tensor.
+    :param tuple output_size: shape of the output tensor.
 
     :return: (:class:`torch.Tensor`) the zero-padded tensor.
     """
@@ -151,13 +152,14 @@ def padding(tensor: torch.Tensor, input_shape: tuple, output_shape: tuple):
     )
 
 
-def trimming(tensor: torch.Tensor, input_shape: tuple, output_shape: tuple):
+@_deprecated_alias(input_shape="img_size", output_shape="output_size")
+def trimming(tensor: torch.Tensor, img_size: tuple, output_size: tuple):
     r"""
     Trimming function for undersampling in structured random phase retrieval.
 
     :param torch.Tensor tensor: input tensor.
-    :param tuple input_shape: shape of the input tensor.
-    :param tuple output_shape: shape of the output tensor.
+    :param tuple img_size: shape of the input tensor.
+    :param tuple output_size: shape of the output tensor.
 
     :return: (:class:`torch.Tensor`) the trimmed tensor.
     """
@@ -541,8 +543,8 @@ class StructuredRandom(LinearPhysics):
 
     where :math:`F` is a matrix representing a structured transform, :math:`D_i` are diagonal matrices, and :math:`N` refers to the number of layers. It is also possible to replace :math:`x` with :math:`Fx` as an additional 0.5 layer.
 
-    :param tuple input_shape: input shape. If (C, H, W), i.e., the input is a 2D signal with C channels, then zero-padding will be used for oversampling and cropping will be used for undersampling.
-    :param tuple output_shape: shape of outputs.
+    :param tuple img_size: input shape. If (C, H, W), i.e., the input is a 2D signal with C channels, then zero-padding will be used for oversampling and cropping will be used for undersampling.
+    :param tuple output_size: shape of outputs.
     :param float n_layers: number of layers :math:`N`. If ``layers=N + 0.5``, a first :math`F` transform is included, ie :math:`A(x)=|\prod_{i=1}^N (F D_i) F x|^2`. Default is 1.
     :param list transforms: transform functions for each layer.
     :param list transform_invs: inverse transform for each layer.
@@ -551,6 +553,7 @@ class StructuredRandom(LinearPhysics):
     :param torch.Generator rng: Random number generator. Default is None.
     """
 
+    @_deprecated_alias(input_shape="img_size", output_shape="output_size")
     def __init__(
         self,
         input_shape: tuple,
@@ -686,7 +689,7 @@ class StructuredRandom(LinearPhysics):
             if len(self.input_shape) == 3:
                 x = trimming(x, self.middle_shape, self.output_shape)
 
-            return x
+        return x
 
         def A_adjoint(y):
             assert (
