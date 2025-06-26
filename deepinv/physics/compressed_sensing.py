@@ -4,6 +4,7 @@ import torch
 from deepinv.physics.forward import LinearPhysics
 from deepinv.physics.functional import random_choice
 from deepinv.physics.structured_random import StructuredRandom, generate_diagonal
+from deepinv.utils.decorators import _deprecated_alias
 
 
 class CompressedSensing(LinearPhysics):
@@ -82,7 +83,7 @@ class CompressedSensing(LinearPhysics):
     def __init__(
         self,
         m,
-        img_shape,
+        img_size,
         mode=None,
         product=1,
         unit_mag=False,
@@ -195,7 +196,7 @@ class CompressedSensing(LinearPhysics):
             self.register_buffer("_A_adjoint", self._A.conj().T.type(dtype).to(device))
         self.to(device)
 
-    def A(self, x: Tensor, **kwargs) -> Tensor:
+    def A(self, x: torch.Tensor, **kwargs) -> torch.Tensor:
         N, C = x.shape[:2]
         if self.channelwise:
             x = x.reshape(N * C, -1)
@@ -212,7 +213,7 @@ class CompressedSensing(LinearPhysics):
 
         return y
 
-    def A_adjoint(self, y: Tensor, **kwargs) -> Tensor:
+    def A_adjoint(self, y: torch.Tensor, **kwargs) -> torch.Tensor:
         y = y.type(self.dtype)
         N = y.shape[0]
         C, H, W = self.img_size[0], self.img_size[1], self.img_size[2]
@@ -233,7 +234,7 @@ class CompressedSensing(LinearPhysics):
         x = x.view(N, C, H, W)
         return x
 
-    def A_dagger(self, y: Tensor, **kwargs) -> Tensor:
+    def A_dagger(self, y: torch.Tensor, **kwargs) -> torch.Tensor:
         y = y.type(self.dtype)
         if self.fast:
             return self.A_adjoint(y)

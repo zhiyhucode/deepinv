@@ -320,7 +320,7 @@ def plot(
             plt.subplots_adjust(hspace=0.01, wspace=0.05)
 
     if save_fn:
-        plt.savefig(save_fn, dpi=dpi)
+        plt.savefig(save_fn, dpi=dpi, transparent=True)
 
     if save_dir:
         plt.savefig(save_dir / "images.svg", dpi=dpi)

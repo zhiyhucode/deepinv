@@ -8,6 +8,7 @@ from deepinv.optim.phase_retrieval import spectral_methods
 from deepinv.physics.compressed_sensing import CompressedSensing
 from deepinv.physics.forward import Physics, LinearPhysics
 from deepinv.physics.structured_random import StructuredRandom
+from deepinv.utils.decorators import _deprecated_alias
 
 
 class PhaseRetrieval(Physics):
@@ -233,7 +234,6 @@ class StructuredRandomPhaseRetrieval(PhaseRetrieval):
     :param str device: Device for computation. Default is `cpu`.
     """
 
-    @_deprecated_alias(input_shape="img_size", output_shape="output_size")
     def __init__(
         self,
         input_shape: tuple,
@@ -273,6 +273,7 @@ class StructuredRandomPhaseRetrieval(PhaseRetrieval):
 
         # model shape
         self.input_shape = input_shape
+        self.img_size = input_shape
         self.output_shape = output_shape
         self.mode = compare(input_shape, output_shape)
         if middle_shape is None:

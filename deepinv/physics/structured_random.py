@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from functools import partial
 import math
-from typing import Optional
+from typing import Optional, TypedDict
 
 import numpy as np
 import scipy as sp
@@ -15,10 +15,18 @@ from deepinv.physics.forward import LinearPhysics
 from deepinv.optim.phase_retrieval import generate_signal
 
 
+class DistributionConfig(TypedDict):
+    degree_of_freedom: float
+    alpha: float
+    include_zero: bool
+    realistic_phase: np.ndarray
+    diagonal: torch.Tensor
+
+
 class Distribution(ABC):
     def __init__(self):
-        self.min_supp: float
-        self.max_supp: float
+        self.min_supp: float | np.ndarray
+        self.max_supp: float | np.ndarray
         self.max_pdf = None
 
     @abstractmethod
@@ -72,9 +80,9 @@ class MarchenkoPastur(Distribution):
         super().__init__()
 
     def pdf(self, x: np.ndarray) -> np.ndarray:
-        assert (x >= self.min_supp).all() and (
-            x <= self.max_supp
-        ).all(), "x is out of the support of the distribution"
+        assert (x >= self.min_supp).all() and (x <= self.max_supp).all(), (
+            "x is out of the support of the distribution"
+        )
         x = np.array(x)
 
         return np.sqrt((self.max_supp - x) * (x - self.min_supp)) / (
@@ -124,7 +132,6 @@ class MarchenkoPastur(Distribution):
         return self.gamma * self.sigma**4
 
 
-@_deprecated_alias(input_shape="img_size", output_shape="output_size")
 def padding(tensor: torch.Tensor, img_size: tuple, output_size: tuple):
     r"""
     Zero padding function for oversampling in structured random phase retrieval.
@@ -135,24 +142,23 @@ def padding(tensor: torch.Tensor, img_size: tuple, output_size: tuple):
 
     :return: (:class:`torch.Tensor`) the zero-padded tensor.
     """
-    assert (
-        tensor.shape[-3:] == input_shape
-    ), f"tensor doesn't have the correct shape {tensor.shape}, expected {input_shape}."
-    assert (input_shape[-1] <= output_shape[-1]) and (
-        input_shape[-2] <= output_shape[-2]
-    ), f"Input shape {input_shape} should be smaller than output shape {output_shape} for padding."
+    assert tensor.shape[-3:] == img_size, (
+        f"tensor doesn't have the correct shape {tensor.shape}, expected {img_size}."
+    )
+    assert (img_size[-1] <= output_size[-1]) and (img_size[-2] <= output_size[-2]), (
+        f"Input shape {img_size} should be smaller than output shape {output_size} for padding."
+    )
 
-    change_top = math.ceil(abs(input_shape[-2] - output_shape[-2]) / 2)
-    change_bottom = math.floor(abs(input_shape[-2] - output_shape[-2]) / 2)
-    change_left = math.ceil(abs(input_shape[-1] - output_shape[-1]) / 2)
-    change_right = math.floor(abs(input_shape[-1] - output_shape[-1]) / 2)
+    change_top = math.ceil(abs(img_size[-2] - output_size[-2]) / 2)
+    change_bottom = math.floor(abs(img_size[-2] - output_size[-2]) / 2)
+    change_left = math.ceil(abs(img_size[-1] - output_size[-1]) / 2)
+    change_right = math.floor(abs(img_size[-1] - output_size[-1]) / 2)
 
     return torch.nn.ZeroPad2d((change_left, change_right, change_top, change_bottom))(
         tensor
     )
 
 
-@_deprecated_alias(input_shape="img_size", output_shape="output_size")
 def trimming(tensor: torch.Tensor, img_size: tuple, output_size: tuple):
     r"""
     Trimming function for undersampling in structured random phase retrieval.
@@ -163,17 +169,17 @@ def trimming(tensor: torch.Tensor, img_size: tuple, output_size: tuple):
 
     :return: (:class:`torch.Tensor`) the trimmed tensor.
     """
-    assert (
-        tensor.shape[-3:] == input_shape
-    ), f"tensor doesn't have the correct shape {tensor.shape}, expected {input_shape}."
-    assert (input_shape[-1] >= output_shape[-1]) and (
-        input_shape[-2] >= output_shape[-2]
-    ), f"Input shape {input_shape} should be larger than output shape {output_shape} for trimming."
+    assert tensor.shape[-3:] == img_size, (
+        f"tensor doesn't have the correct shape {tensor.shape}, expected {img_size}."
+    )
+    assert (img_size[-1] >= output_size[-1]) and (img_size[-2] >= output_size[-2]), (
+        f"Input shape {img_size} should be larger than output shape {output_size} for trimming."
+    )
 
-    change_top = math.ceil(abs(input_shape[-2] - output_shape[-2]) / 2)
-    change_bottom = math.floor(abs(input_shape[-2] - output_shape[-2]) / 2)
-    change_left = math.ceil(abs(input_shape[-1] - output_shape[-1]) / 2)
-    change_right = math.floor(abs(input_shape[-1] - output_shape[-1]) / 2)
+    change_top = math.ceil(abs(img_size[-2] - output_size[-2]) / 2)
+    change_bottom = math.floor(abs(img_size[-2] - output_size[-2]) / 2)
+    change_left = math.ceil(abs(img_size[-1] - output_size[-1]) / 2)
+    change_right = math.floor(abs(img_size[-1] - output_size[-1]) / 2)
 
     if change_bottom == 0:
         tensor = tensor[..., change_top:, :]
@@ -187,9 +193,9 @@ def trimming(tensor: torch.Tensor, img_size: tuple, output_size: tuple):
 
 
 def generate_diagonal(
-    shape: tuple[int, ...],
+    shape: torch.Size,
     mode,
-    config: Optional[dict] = None,
+    config: Optional[DistributionConfig] = None,
     dtype=torch.complex64,
     device="cpu",
     generator=torch.Generator("cpu"),
@@ -206,6 +212,7 @@ def generate_diagonal(
         elif mode == "gaussian":
             diag = torch.randn(shape, dtype=dtype)
         elif mode == "student-t":
+            assert config is not None, "config must be provided for student-t distribution"
             #! variance = df/(df-2) if df > 2
             #! variance of complex numbers is doubled
             student_t_dist = torch.distributions.studentT.StudentT(
@@ -222,14 +229,15 @@ def generate_diagonal(
         else:
             raise ValueError(f"Unsupported mode: {mode}")
     elif isinstance(mode, list):
-        assert (
-            len(mode) == 2
-        ), "mode must be a list of two elements to specify the magnitude and phase distributions"
+        assert len(mode) == 2, (
+            "mode must be a list of two elements to specify the magnitude and phase distributions"
+        )
         mag, phase = mode
         #! should be normalized to have E[|x|^2] = 1 if energy conservation
         if mode[0] == "unit":
             mag = torch.ones(shape, dtype=dtype)
         elif mode[0] == "marchenko":
+            assert config is not None, "config must be provided for Marchenko distribution"
             mag = torch.from_numpy(
                 MarchenkoPastur(alpha=config["alpha"]).sample(
                     shape, normalized=True, include_zero=config["include_zero"]
@@ -237,6 +245,7 @@ def generate_diagonal(
             ).to(dtype)
             mag = torch.sqrt(mag)
         elif mode[0] == "custom":
+            assert config is not None, "config must be provided for custom diagonal"
             mag = torch.sqrt(config["diagonal"])
         else:
             raise ValueError(f"Unsupported magnitude: {mode[0]}")
@@ -258,6 +267,7 @@ def generate_diagonal(
             # Randomly select elements from the values with equal probability
             phase = values[torch.randint(0, len(values), shape)]
         elif mode[1] == "realistic":
+            assert config is not None, "config must be provided for realistic phase"
             phase = torch.tensor(config["realistic_phase"], dtype=dtype)
         else:
             raise ValueError(f"Unsupported phase: {mode[1]}")
@@ -272,7 +282,7 @@ def generate_diagonal(
 def generate_spectrum(
     shape: tuple[int, ...],
     mode: str,
-    config: Optional[dict] = None,
+    config: Optional[DistributionConfig] = None,
     dtype=torch.complex64,
     device="cpu",
     generator: Optional[torch.Generator] = torch.Generator("cpu"),
@@ -280,6 +290,7 @@ def generate_spectrum(
     if mode == "unit":
         spectrum = torch.ones(shape, dtype=dtype)
     elif mode == "marchenko":
+        assert config is not None, "config must be provided for Marchenko distribution"
         spectrum = torch.from_numpy(
             MarchenkoPastur(alpha=config["alpha"]).sample(
                 shape, normalized=True, include_zero=config["include_zero"]
@@ -553,12 +564,11 @@ class StructuredRandom(LinearPhysics):
     :param torch.Generator rng: Random number generator. Default is None.
     """
 
-    @_deprecated_alias(input_shape="img_size", output_shape="output_size")
     def __init__(
         self,
-        input_shape: tuple,
-        output_shape: tuple,
-        middle_shape: Optional[tuple] = None,
+        input_shape: torch.Size,
+        output_shape: torch.Size,
+        middle_shape: torch.Size,
         n_layers=1,
         spectrum=None,
         transforms=["dst1"],
@@ -577,6 +587,8 @@ class StructuredRandom(LinearPhysics):
         self.n_layers = n_layers
         self.dtype = dtype
         self.device = device
+        if rng is None:
+            rng = torch.Generator(device=device)
 
         # * generate spectrum
         if spectrum is None:
@@ -668,9 +680,9 @@ class StructuredRandom(LinearPhysics):
 
         # forward operator
         def A(x):
-            assert (
-                x.shape[1:] == self.input_shape
-            ), f"x doesn't have the correct shape {x.shape[1:]} != {self.input_shape}"
+            assert x.shape[1:] == self.input_shape, (
+                f"x doesn't have the correct shape {x.shape[1:]} != {self.input_shape}"
+            )
             x = x * self.spectrum
 
             if len(self.input_shape) == 3:
@@ -689,12 +701,12 @@ class StructuredRandom(LinearPhysics):
             if len(self.input_shape) == 3:
                 x = trimming(x, self.middle_shape, self.output_shape)
 
-        return x
+            return x
 
         def A_adjoint(y):
-            assert (
-                y.shape[1:] == self.output_shape
-            ), f"y doesn't have the correct shape {y.shape[1:]} != {self.output_shape}"
+            assert y.shape[1:] == self.output_shape, (
+                f"y doesn't have the correct shape {y.shape[1:]} != {self.output_shape}"
+            )
 
             if len(self.input_shape) == 3:
                 y = padding(y, self.output_shape, self.middle_shape)
@@ -717,9 +729,9 @@ class StructuredRandom(LinearPhysics):
     def get_forward_matrix(self, transforms, verbose=False):
         """Given the structure of the operator, return the forward matrix."""
         if not hasattr(self, "forward_matrix"):
-            m = np.prod(self.output_shape)
-            p = np.prod(self.middle_shape)
-            n = np.prod(self.input_shape)
+            m = np.prod(self.output_shape).item()
+            p = np.prod(self.middle_shape).item()
+            n = np.prod(self.input_shape).item()
 
             if verbose:
                 print("computing transform matrix")
@@ -765,7 +777,7 @@ class StructuredRandom(LinearPhysics):
     def get_singular_values(self):
         """Compute the singular values of the forward matrix"""
         if not hasattr(self, "forward_matrix"):
-            self.get_forward_matrix()
+            self.get_forward_matrix(transforms=self.transforms)
         s = sp.linalg.svdvals(self.forward_matrix.cpu().numpy())
         return s
 
@@ -774,12 +786,12 @@ class StructuredRandom(LinearPhysics):
 
         x and return both have the middle shape"""
 
-        assert (
-            n_layers <= self.n_layers
-        ), f"n_layers should be no greater than to {self.n_layers}"
-        assert (
-            self.n_layers - math.floor(self.n_layers) == 0.0
-        ), "currently only support integer number of layers"
+        assert n_layers <= self.n_layers, (
+            f"n_layers should be no greater than to {self.n_layers}"
+        )
+        assert self.n_layers - math.floor(self.n_layers) == 0.0, (
+            "currently only support integer number of layers"
+        )
 
         x = padding(x, self.input_shape, self.middle_shape)
 
@@ -795,12 +807,12 @@ class StructuredRandom(LinearPhysics):
         y and return both have the middle shape.
         """
 
-        assert (
-            n_layers <= self.n_layers
-        ), f"n_layers should be no greater than {self.n_layers}"
-        assert (
-            self.n_layers - math.floor(self.n_layers) == 0.0
-        ), "currently only support integer number of layers"
+        assert n_layers <= self.n_layers, (
+            f"n_layers should be no greater than {self.n_layers}"
+        )
+        assert self.n_layers - math.floor(self.n_layers) == 0.0, (
+            "currently only support integer number of layers"
+        )
 
         for i in range(math.floor(n_layers)):
             y = self.transform_invs[-(self.n_layers - n_layers) - i - 1](y)
@@ -808,7 +820,7 @@ class StructuredRandom(LinearPhysics):
 
         return y
 
-    def get_adversarial(self, n_layers=None, trimmed=True, mag='delta') -> torch.Tensor:
+    def get_adversarial(self, n_layers=None, trimmed=True, mag="delta") -> torch.Tensor:
         """returns the closest input to the signal which yields the measuremnts as a delta signal"""
 
         if n_layers is None:
@@ -816,7 +828,7 @@ class StructuredRandom(LinearPhysics):
 
         adver_out = generate_signal(
             (1,) + self.middle_shape,
-            mode=[mag, "constant"],
+            mode=(mag, "constant"),
             dtype=self.dtype,
             device=self.device,
         )
