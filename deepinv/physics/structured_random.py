@@ -405,7 +405,6 @@ def idct2(x: torch.Tensor, device):
         idct(idct(x.cpu().numpy(), axis=-2, norm="ortho"), axis=-1, norm="ortho")
     ).to(device)
 
-
 def hadamard1(x):
     shape = x.shape
 
