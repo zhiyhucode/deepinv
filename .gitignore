@@ -19,7 +19,6 @@
 *-ubyte
 *tmp
 *.tar
-*.ipynb
 examples/*/*.png
 examples/*/*.gif
 
