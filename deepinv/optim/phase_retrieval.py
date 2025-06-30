@@ -392,10 +392,10 @@ def plot_error_bars(
         data = data.copy()
 
         if plot == "reconstruction":
-            if "structured" in label:
-                color = structured_color
-            elif "full" in label:
-                color = full_color
+            if "Structured" in label:
+                color = palette[0]
+            elif "Full" in label:
+                color = palette[3]
         elif plot == "layer":
             if "1 layer" in label:
                 color = palette[0]
@@ -414,10 +414,10 @@ def plot_error_bars(
 
         if "gd rand" in label:
             linestyle = ":"
-        elif "gd spec" in label:
+        elif "GD+SM" in label:
             linestyle = "-"
-        elif "spec" in label:
-            linestyle = "--"
+        elif "SM" in label:
+            linestyle = ":"
         else:
             linestyle = "-"
 
@@ -482,20 +482,21 @@ def plot_error_bars(
             eb[-1][0].set_linestyle(error_bar_linestyle)
 
     if plot == "reconstruction":
-        legend_contents = [
-            (Patch(visible=False), r"$\bf{Model}$"),
-            (
-                plt.Line2D([], [], linestyle="-", color=structured_color),
-                "structured random",
-            ),
-            (plt.Line2D([], [], linestyle="-", color=full_color), "i.i.d. random"),
-            # (Patch(visible=False), ''),  # spacer
-            (Patch(visible=False), r"$\bf{Algorithm}$"),
-            (plt.Line2D([], [], linestyle="-", marker=".", color="black"), "GD + SM"),
-            (plt.Line2D([], [], linestyle="--", marker=".", color="black"), "SM"),
-            (plt.Line2D([], [], linestyle=":", marker=".", color="black"), "GD"),
-        ]
-        legend = ax.legend(*zip(*legend_contents), loc=legend_loc)
+        # legend_contents = [
+        #     (Patch(visible=False), r"$\bf{Model}$"),
+        #     (
+        #         plt.Line2D([], [], linestyle="-", color=structured_color),
+        #         "structured random",
+        #     ),
+        #     (plt.Line2D([], [], linestyle="-", color=full_color), "i.i.d. random"),
+        #     # (Patch(visible=False), ''),  # spacer
+        #     (Patch(visible=False), r"$\bf{Algorithm}$"),
+        #     (plt.Line2D([], [], linestyle="-", marker=".", color="black"), "GD + SM"),
+        #     (plt.Line2D([], [], linestyle="--", marker=".", color="black"), "SM"),
+        #     (plt.Line2D([], [], linestyle=":", marker=".", color="black"), "GD"),
+        # ]
+        # legend = ax.legend(*zip(*legend_contents), loc=legend_loc)
+        legend = ax.legend(loc=legend_loc)
     elif plot == "layer":
         legend_contents = [
             (Patch(visible=False), "$\\bf{Structure}$"),

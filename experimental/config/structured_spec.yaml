@@ -1,12 +1,12 @@
 general:
-  name: "marchenko_hadamard2"
+  name: "fd-unit"
   recon: "spec"
   save: True
   verbose: False
 
 signal:
   shape: [1,1,64,64]
-  mode: ["unit","random"] #["delta","constant"]
+  mode: ["unit","shepp-logan"] #["delta","constant"]
   config:
     n_layers: 0
 
@@ -14,14 +14,14 @@ model:
   spectrum:
     mode: "unit"
     product: 1
-  n_layers: 2
+  n_layers: 1
   diagonals:
     #! in the order of math
-    mode: [['unit','uniform'],['marchenko','uniform']] # mag: 'unit', 'marchenko', phase: 'uniform', 'laplace', 'quadrant'
+    mode: [['unit','uniform']] # mag: 'unit', 'marchenko', phase: 'uniform', 'laplace', 'quadrant'
     config:
       #degree_of_freedom: 30
       #radius: 0.8
-  transforms: ["hadamard2","hadamard2"] # 'fourier', 'cosine', 'hadamard' + dimension
+  transforms: ["fourier2"] # 'fourier', 'cosine', 'hadamard' + dimension
   pad_powers_of_two: False
   shared_weights: False
   include_zero: False # whether to include zero diagonal elements when undersampling 
