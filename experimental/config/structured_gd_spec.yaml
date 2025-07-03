@@ -1,5 +1,5 @@
 general:
-  name: "structured"
+  name: "structured-unitary"
   recon: "gd_spec"
   save: False
   verbose: False
@@ -17,7 +17,7 @@ model:
   n_layers: 2
   diagonals:
     #! in the order of math
-    mode: [['unit','uniform'],['marchenko','uniform']] # mag: 'unit', 'marchenko', phase: 'uniform', 'laplace', 'quadrant'
+    mode: [['unit','uniform'],['unit','uniform']] # mag: 'unit', 'marchenko', phase: 'uniform', 'laplace', 'quadrant'
     config:
       #degree_of_freedom: 30
       #radius: 0.8
@@ -38,7 +38,7 @@ recon:
     prior: 'zero'
     early_stop: True
     max_iter: 10000
-    spectrum: 'marchenko' # to estimate the Lipschitz constant
+    spectrum: 'unitary' # to estimate the Lipschitz constant
 
 save:
   path: "../runs"

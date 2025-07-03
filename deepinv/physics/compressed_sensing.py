@@ -191,9 +191,6 @@ class CompressedSensing(LinearPhysics):
                 .to(device)
             )
 
-            self.register_buffer("_A", _A)
-            self.register_buffer("_A_dagger", _A_dagger)
-            self.register_buffer("_A_adjoint", self._A.conj().T.type(dtype).to(device))
         self.to(device)
 
     def A(self, x: torch.Tensor, **kwargs) -> torch.Tensor:

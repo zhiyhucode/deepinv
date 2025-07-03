@@ -1,5 +1,5 @@
 general:
-  name: "full"
+  name: "full-unitary"
   recon: "gd_spec"
   save: True
   verbose: False
@@ -11,13 +11,13 @@ signal:
     n_layers: 0
 
 model:
-  mode: "null" # null, "unitary", "circulant"
+  mode: "unitary" # null, "unitary", "circulant"
   unit_mag: False
   product: 1
 
 recon:
   series: "arange"
-  start: 0.1
+  start: 1.0
   end: 9.1
   step: 0.1
   list: []
@@ -28,7 +28,7 @@ recon:
     prior: 'zero'
     early_stop: True
     max_iter: 10000
-    spectrum: 'marchenko'
+    spectrum: 'unitary'
 
 save:
   path: "../runs"

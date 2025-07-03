@@ -1,5 +1,5 @@
 general:
-  name: "fd-unit"
+  name: "fd-marchenko"
   recon: "spec"
   save: True
   verbose: False
@@ -17,7 +17,7 @@ model:
   n_layers: 1
   diagonals:
     #! in the order of math
-    mode: [['unit','uniform']] # mag: 'unit', 'marchenko', phase: 'uniform', 'laplace', 'quadrant'
+    mode: [['marchenko','uniform']] # mag: 'unit', 'marchenko', phase: 'uniform', 'laplace', 'quadrant'
     config:
       #degree_of_freedom: 30
       #radius: 0.8

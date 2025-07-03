@@ -136,7 +136,6 @@ class RandomPhaseRetrieval(PhaseRetrieval):
 
     """
 
-    @_deprecated_alias(img_shape="img_size")
     def __init__(
         self,
         m,
@@ -154,6 +153,7 @@ class RandomPhaseRetrieval(PhaseRetrieval):
     ):
         self.m = m
         self.input_shape = img_shape
+        self.img_size = img_shape
         self.oversampling_ratio = m / torch.prod(torch.tensor(img_shape))
         self.channelwise = channelwise
         self.dtype = dtype

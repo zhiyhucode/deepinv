@@ -298,7 +298,7 @@ def plot(
         )
 
     if suptitle:
-        plt.suptitle(suptitle, size=12, wrap=True)
+        plt.suptitle(suptitle, size=fontsize, wrap=True)
         fig.subplots_adjust(top=0.75)
 
     for i, row_imgs in enumerate(imgs):
@@ -310,7 +310,7 @@ def plot(
                 colbar = fig.colorbar(im, cax=cax, orientation="vertical")
                 colbar.ax.tick_params(labelsize=8)
             if titles and r == 0:
-                axs[r, i].set_title(titles[i], size=9, wrap=True)
+                axs[r, i].set_title(titles[i], size=fontsize, wrap=True)
             axs[r, i].axis("off")
 
     if tight:

@@ -4,6 +4,7 @@ This file contains utility functions for phase retrieval.
 It includes functions for generating phase signals, reconstruction and evaluation.
 """
 
+import shutil
 from typing import TypedDict
 
 from matplotlib.patches import Patch
@@ -384,6 +385,7 @@ def plot_error_bars(
     plt.rcParams["font.family"] = font
     plt.rcParams["font.size"] = fontsize
     plt.rcParams["axes.labelsize"] = labelsize
+    #plt.rcParams["text.usetex"] = True if shutil.which("latex") else False
     plt.figure(figsize=figsize)
 
     for i, (oversampling, data, label) in enumerate(
@@ -396,6 +398,15 @@ def plot_error_bars(
                 color = palette[0]
             elif "Full" in label:
                 color = palette[3]
+
+            if "GD+SM" in label:
+                linestyle = (0, (5, 5))
+            elif "GD" in label:
+                linestyle = ":"
+            elif "SM" in label:
+                linestyle = (0, (5, 1))
+            else:
+                linestyle = "-"
         elif plot == "layer":
             if "1 layer" in label:
                 color = palette[0]
@@ -407,19 +418,27 @@ def plot_error_bars(
                 color = palette[3]
             elif "haar" in label:
                 color = palette[4]
-        elif plot == "time":
-            color = palette[i]
+        elif plot == '1p5':
+            if "2 Layers" in label:
+                color = palette[3]
+            else:
+                color = palette[0]
+            if "Random" in label:
+                linestyle = "-"
+            elif "Shepp-Logan" in label:
+                linestyle = "-."
+            elif "Constant" in label:
+                linestyle = ":"
         else:
             color = palette[i]
-
-        if "gd rand" in label:
-            linestyle = ":"
-        elif "GD+SM" in label:
-            linestyle = "-"
-        elif "SM" in label:
-            linestyle = ":"
-        else:
-            linestyle = "-"
+            if "gd rand" in label:
+                linestyle = ":"
+            elif "GD+SM" in label:
+                linestyle = "-"
+            elif "SM" in label:
+                linestyle = ":"
+            else:
+                linestyle = "-"
 
         # Calculate statistics
         if type(data) == torch.Tensor:
