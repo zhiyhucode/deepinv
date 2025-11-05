@@ -262,9 +262,10 @@ def generate_diagonal(
             phase = laplace_dist.sample(shape) + 1j * laplace_dist.sample(shape)
             phase = phase / phase.abs()
         elif mode[1] == "quadrant":
-            # generate random phase 1, -1, j, -j
             values = torch.tensor([1, -1, 1j, -1j])
-            # Randomly select elements from the values with equal probability
+            phase = values[torch.randint(0, len(values), shape)]
+        elif mode[1] == "binary":
+            values = torch.tensor([1, -1])
             phase = values[torch.randint(0, len(values), shape)]
         elif mode[1] == "realistic":
             assert config is not None, "config must be provided for realistic phase"

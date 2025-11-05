@@ -242,8 +242,8 @@ class StructuredRandomPhaseRetrieval(PhaseRetrieval):
         n_layers: float = 2,
         transforms: list[str] = ["fourier2", "fourier2"],
         diagonals: list[list[str]] = [
-            ["unit", "uniform"],
-            ["marchenko", "uniform"],
+            ["unit", "binary"],
+            ["marchenko", "binary"],
         ],  # in the order of math
         diagonal_config: dict = dict(),
         manual_spectrum: str | torch.Tensor = "unit",
